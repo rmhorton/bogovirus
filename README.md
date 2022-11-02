@@ -6,7 +6,7 @@ This is a simple simulation of outcomes from a viral infection, designed to prod
 
 These are the online versions of the notebooks:
 
-- [Bogovirus primary simulation](https://rmhorton.github.io/bogovirus/Bogovirus_simulation_notebook.html)
-- [Bogovirus BN analytical simulation](https://rmhorton.github.io/bogovirus/Bogovirus_simsim_notebook.html)
+- [Bogovirus primary simulation](https://rmhorton.github.io/bogovirus/Bogovirus_simulation.html)
+- [Bogovirus BN analytical simulation](https://rmhorton.github.io/bogovirus/Bogovirus_simsim.html)
 
 This repository was originally hosted under the [Virtual Generalist]((https://rmhorton.github.io/virtual-generalist) repo, but we split it out to make it easier to find and manage.
