@@ -9,4 +9,10 @@ These are the online versions of the notebooks:
 - [Bogovirus primary simulation](https://rmhorton.github.io/bogovirus/Bogovirus_simulation.html)
 - [Bogovirus BN analytical simulation](https://rmhorton.github.io/bogovirus/Bogovirus_simsim.html)
 
+Experiments with a constant policy offline and simulated environment are in the directory
+
+- rl/
+
+You will need to install the gym package for python to run them.
+
 This repository was originally hosted under the [Virtual Generalist](https://rmhorton.github.io/virtual-generalist) repo, but we split it out to make it easier to find and manage.
