@@ -1,9 +1,13 @@
 # reduce trajectory py
 # JMA 5 Oct 2022
 # Scan all trajectory records to compute survivals
-import os, re, sys
+import os
+import re
+import sys
 from pathlib import Path
+
 import pandas as pd
+
 
 def parse_filename(a_fn: Path):
     base = a_fn.name
