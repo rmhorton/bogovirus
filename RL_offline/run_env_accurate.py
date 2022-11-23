@@ -1,6 +1,6 @@
 # harness to run BogoEnv gym environment
 # JMA 27 Sept 2022
-import os, re, sys
+import os, re, sys, time
 import datetime as dt
 import pandas as pd
 import numpy as np
@@ -20,7 +20,7 @@ import mlflow
 # The Tracking Server will have a url like "azureml://eastus2.api.azureml.ms/mlflow..."
 
 EPISODE_LEN = 100
-CONST_ACTION = 0.0
+CONST_ACTION = 1.0
 unique_dt = time.strftime( 'T%j-%H-%M-%S')
 
 # Also by running this on a compute context, the experiment contents will be displayable
@@ -32,7 +32,7 @@ mlflow.set_experiment("BogoEnv-Acc_"+unique_dt)
 run_trajectory = np.empty((EPISODE_LEN, 5))
 
 mlflow_run = mlflow.start_run()
-bg_env = gym.make('BogoEnv-Acc', disable_env_checker=True)  # Use the name set in the __init__.py file
+bg_env = gym.make('BogoEnv-Acc-v0', disable_env_checker=True)  # Use the name set in the __init__.py file
 
 # Initialize
 # a = bg_env.action_space.sample()
