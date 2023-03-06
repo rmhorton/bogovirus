@@ -1,0 +1,147 @@
+\documentclass{article}
+
+% if you need to pass options to natbib, use, e.g.:
+%     \PassOptionsToPackage{numbers, compress}{natbib}
+% before loading neurips_2022
+
+% ready for submission
+% \usepackage{neurips_2022}
+
+% IMPORTANT: if you are submitting attention track, please add the attention option:
+% \usepackage[attention]{neurips_2022}
+
+% to compile a preprint version, e.g., for submission to arXiv, add add the
+% [preprint] option:
+%    \usepackage[preprint]{neurips_2022}
+
+% to compile a camera-ready version, add the [final] option, e.g.:
+\usepackage[final]{neurips_2022}
+\usepackage{natbib} % has a nice set of citation styles and commands
+    \bibliographystyle{plainnat}
+    \renewcommand{\bibsection}{\subsubsection*{References}}
+% to avoid loading the natbib package, add option nonatbib:
+%    \usepackage[nonatbib]{neurips_2022}
+\usepackage{neurips_2022}
+
+\usepackage[utf8]{inputenc} % allow utf-8 input
+\usepackage[T1]{fontenc}    % use 8-bit T1 fonts
+\usepackage{hyperref}       % hyperlinks
+\usepackage{url}            % simple URL typesetting
+\usepackage{booktabs}       % professional-quality tables
+\usepackage{amsfonts}       % blackboard math symbols
+\usepackage{nicefrac}       % compact symbols for 1/2, etc.
+\usepackage{microtype}      % microtypography
+\usepackage{xcolor}         % colors
+\usepackage[pdftex]{graphicx} % Bob: defines 'includegraphics'
+
+\usepackage{floatrow}         % Bob: place caption beside figure
+\usepackage{hyperref}       % Bob: handle URLs
+
+\usepackage{graphicx} % Maryam: two plots in one figure
+\usepackage{caption} % Maryam
+\usepackage{subcaption} %Maryam
+
+\usepackage{mathtools} % JMA: amsmath with fixes and additions
+% \usepackage{siunitx} % for proper typesetting of numbers and units
+\usepackage{booktabs} % JMA: commands to create good-looking tables
+
+%% Self-defined macros
+\newcommand{\cpr}[2]{\textsf{P}( #1 \, |\, #2 )}
+\newcommand{\pr}[1]{\textsf{P}( #1 )}
+
+
+\title{Approaches to Optimizing Medical Treatment Policy\\ using Temporal Causal Model-Based Simulation}
+
+
+% % The \author macro works with any number of authors. There are two commands
+% % used to separate the names and addresses of multiple authors: \And and \AND.
+% %
+% % Using \And between authors leaves it to LaTeX to determine where to break the
+% % lines. Using \AND forces a line break at that point. So, if LaTeX puts 3 of 4
+% % authors names on the first line, and the last on the second line, try using
+% % \AND instead of \And before the third author name.
+
+\author{%
+  Robert ~Horton\\ 
+  Microsoft\\ 
+%   1045 La Avenida St, Mountain View, CA 94043 USA \\
+  \texttt{rhorton@microsoft.com}
+  \And
+  Maryam ~Tavakoli Hosseinabadi \\
+  Microsoft \\
+%   15595 NE 36th St, Redmond, WA 98052 USA \\
+  \texttt{matavako@microsoft.com} \\
+  \And
+  John-Mark ~Agosta \\
+  Microsoft \\
+%   1045 La Avenida St, Mountain View, CA 94043 USA \\
+  \texttt{john-mark.agosta@microsoft.com} \\
+}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+
+It is notoriously difficult to draw conclusions about the effects of medical interventions from observational data, where statistical confounding is rampant. An important example is "confounding by severity" in which sicker patients receive more aggressive intervention, leading to a misleading positive correlation between stronger intervention and worsening outcome. This scenario is quite generally applicable because it represents negative feedback control, where some control mechanism responds to a change by affecting the change in the opposite direction. This leads to a causal loop: the change affects the feedback and the feedback affects the change. We employ the classic approach to breaking such loops by unrolling them in time, so that the disease severity before treatment is separated from the severity after treatment. Unrolling produces a dataset where the information about a patient is no longer contained on a single row of a dataframe, but is spread over a set of rows representing timeslices. We want to base treatment decisions on the final outcome, which is only found at the end of this set of rows. Since we are interested in outcomes that occur at a future timeslice, we borrow a term from reinforcement learning and describe our type of intervention as a "policy". Our challenge is to properly integrate temporal modeling with causal modeling on observational data so that we can deconstruct these causal loops and reach useful analytical conclusions. Here we demonstrate a suitable analytical approach with a simple toy problem, a drug dosing policy to treat the disorder arising from infection with the fictitious pathogen \textit{Bogovirus}. We begin by writing a simple bespoke simulation program to match a given causal graph; this generates a simulated dataset where we know the ground-truth about causal interactions. Using the known correct influence graph, together with other aspects of "domain knowledge", we build causal model-based simulations of the simulated data ("simsim" models) that let us estimate the expected effects of various treatment policies on ultimate outcomes. We compare this approach to the closely-relate field of reinforcement learning, and show how they are complementary.
+
+\end{abstract}
+
+
+\section{Introduction}
+\label{sec:introduction}
+\input{1_introduction}
+
+\section{BogoVirus: A Simulated Dataset}
+\label{sec:bogovirus_dataset}
+\input{2_bogovirus_dataset}
+
+\section{"SimSim-BN": An Analytical Simulation Built on a Causal BayesNet Model}
+\label{sec:bayesnet_simsim}
+\input{3_bayesnet_simsim}
+
+\section{"SimSim-DECI": Expert-in-the-loop Causal Inference for Intervention Optimization}
+\label{sec:deci_simsim}
+\input{4_deci_simsim}
+
+\section{Offline Reinforcement Learning: The Third Simulation Reconstruction}
+\label{sec:rl}
+\input{5_rl}
+
+\section{Discussion: Where do we go from here?}
+\input{6_discussion}
+
+% \subsection{The recovered causal model as a dynamic Bayes network}
+
+
+% \section{Evaluation}
+
+% How well did the causal model recover the nominal model used to make predictions? Since we know the presumed relations in the simulation that created the data, we can measure how accurately the learned model is, by comparing the simulation from which the model was learned to simulations it generates. 
+
+% \section*{References}   % See synth.bib
+
+The code for this project is in Github \footnote{\url{https://github.com/rmhorton/bogovirus}}.
+
+\bibliography{synth}
+
+%\medskip
+
+%{
+%\small
+
+% [Salas1999] Salas M, Hofman A, Stricker BH. Confounding by indication: an example of variation in the use of epidemiologic terminology. Am J Epidemiol. 1999 Jun 1;149(11):981-3. doi: 10.1093/oxfordjournals.aje.a009758. PMID: 10355372.
+
+% [Kyriacou2016] Kyriacou DN, Lewis RJ. Confounding by Indication in Clinical Research. JAMA. 2016 Nov 1;316(17):1818-1819. doi: 10.1001/jama.2016.16435. PMID: 27802529.
+
+% [Joseph2014] Joseph KS, Mehrabadi A, Lisonkova S. Confounding by Indication and Related Concepts. Curr Epidemiol Rep. 2014 1:1–8. doi: 10.1007/s40471-013-0004-y
+
+% [HHS2021] HHS Press Office. HHS Announces Synthetic Health Data Challenge Winners. September 21, 2021. \url{https://www.hhs.gov/about/news/2021/09/21/hhs-announces-synthetic-health-data-challenge-winners.html}
+
+% [DynamicBayes2022] Wikipedia contributors. Dynamic Bayesian network. Wikipedia, The Free Encyclopedia. May 6, 2022, 08:16 UTC. Available at: \url{https://en.wikipedia.org/w/index.php?title=Dynamic_Bayesian_network&oldid=1086456685}. Accessed September 22, 2022.
+
+%}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\end{document}

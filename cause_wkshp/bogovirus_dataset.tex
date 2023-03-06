@@ -1,0 +1,69 @@
+
+
+A common problem in causal modeling of medical disorders is the presence of feedback loops. A drug is given to manage a disorder, and the disorder responds to the drug; this circular feedback leads to "confounding by indication" (~\cite{salas1999confounding}), or its continuous-domain analog, "confounding by severity". One way to break such causal influence cycles is to unroll them in time to create a ``Dynamic Bayesian Network'' (\cite{dean1991planning}); one observes the severity of the disorder in the current timestep when administering the drug, and the response to the drug is reflected in the severity of the disorder in the next timestep.
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.95\linewidth]{figures/design_DAG.pdf}
+  \caption{Unrolled causal model with sequential time steps. States explicitly included in the model are shown in color; gray ovals and dotted arrows show states and transitions that are captured in other timesteps.}
+  \label{fig:HBS_sequence}
+\end{figure}
+
+\subsection{Primary simulation}
+
+Our model includes an underlying condition (infection with the imaginary organism \textit{Bogovirus}); this condition will resolve over time as long as the patient does not die. Infection leads to a disorder (it could be something like a problem with blood clotting, breathing, or circulation) that must be managed because if it gets too severe it can lead to death. The disorder is managed by a drug which has a direct effect on the severity of the disorder, but becomes less effective as the level of the drug accumulates in the body. High cumulative levels of the drug can lead to fatal toxicity. The ultimate outcome is either recovery or death, but on most days neither of these things happens, and the patient just stays in the hospital for another day.
+
+
+We use simulation to generate data for which we know the true causal graph. This is done by writing a simple Python program that implements the causal graph shown in Figure ~\ref{fig:HBS_sequence}; each node is represented by a random function whose inputs are dictated by the edges leading into the node, and this set of functions are called in the order shown in the DAG to compute a row of variable values for each day of the simulated patient's illness. For each patient, this process continues until the infection process completes (leading to a "recover" outcome), or the patient succumbs to either the disorder or the drug toxicity ("die" outcome). We replicate this to simulate a population of patients.
+
+Through trial and error, we adjusted the simulation parameters so that a simple scan of a constant daily dose (see Figure ~\ref{fig:optimizing_dose}) will show an optimum, but the peak performance is less than 100\% survival, so it leaves some room for improvement. 
+% One goal of causal modeling is to do these sorts of optimization studies with the causal model, rather than directly on the simulation. 
+% Changing parameters of the simulation is analogous to experimentation, but one tantalizing promise of causal modeling is the possibility of discovering such optimal protocols without experiments.
+
+\subsection{Components of a medical simulation}
+
+These are the variables in the simulation: 
+\begin{itemize}
+
+\item \texttt{\bf infection}: records how far the patient has passed through the course of the infection (this is basically a counter for percent progress; once it passes 100 and you have not died, you recover).
+\item \texttt{\bf drug}: a dose of the treatment. This is an adjustable quantity.
+\item \texttt{\bf cum\_drug}: The accumulated dose of the treatment drug. This is an exponential moving average, and is subject to decay over time if treatment doses are not administered.
+\item \texttt{\bf efficacy}: The extent to which the drug dose affects severity; the drug becomes less effective at higher cumulative doses.
+\item \texttt{\bf severity}: Quantified level of severity of the disorder caused by the infection. The worse this gets, the more likely the patient is to die.
+\item \texttt{\bf outcome}: if severity gets high enough, the patient's chances of death increase. If the infection runs its course and the patient does not die, they recover.
+\item \texttt{\bf toxicity}: a function of cum\_drug that is much more pronounced at high cumulative dose. High toxicity leads to increased probability of death.
+
+\end{itemize}
+
+Variables with suffixes '\texttt{\bf \_prev}' or '\texttt{\bf \_next}' hold lagging  or leading values from adjacent timeslices.
+
+\subsection{Simulated datasets}
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.95\linewidth]{figures/patient_table.png}
+  \caption{Simulated data for a single patient. This is from the "RCT" dataset, where the patient has been assigned to the 0.8 dose of drug, if they are given a dose at all. Note that the drug is administered probabilistically depending on severity, so at early stages no drug is administered.}
+  \label{fig:patient_table}
+\end{figure}
+
+
+To simulate a randomized controlled trial (RCT) of drug dose, patients were assigned to cohorts, and each cohort received a fixed dose of the drug on each day of treatment. Figure ~\ref{fig:patient_table} shows simulated data for a single patient episode. There is one column for each node in the model, plus housekeeping attributes \texttt{patient\_id}, and \texttt{day\_number} (how many days that patient has been in the hospital). The \texttt{cohort} column indicates the group into which the patient was randomized in the simulated RCT; this determines the dose of drug the patient receives.
+
+
+To simulate observational data, we use the primary simulator to generate another dataset in which a random dose of drug is given to each patient each day. This randomized policy dataset is the input to the subsequent modelling tasks. 
+
+\subsection{Finding the optimal dose}
+
+The solid red curve in Figure \ref{fig:optimizing_dose} shows survival at different doses of drug from the RCT dataset. The optimal dose (0.7 units) gives us a standard to compare with results we obtain from analytical simulations. Our goal in subsequent sections is to use analytical 'simsim' simulations to approximate this solid red curve without requiring an RCT.
+
+\begin{figure}
+  \centering
+  \floatbox[{\capbeside\thisfloatsetup{capbesideposition={left,top},capbesidewidth=5.5cm}}]{figure}[\FBwidth]
+  {  
+    \caption{Finding the optimal dose to maximize survival. The solid red line shows the results of running a simulated Randomized Controlled Trial (RCT) in the primary simulation described in section \ref{sec:bogovirus_dataset}; the dashed lines show the results obtained in analytical 'simsim' simulations trained on the 'observational' dataset. The viral disorder is almost uniformly fatal if untreated, drug toxicity is fatal at high cumulative doses, and there is a point where the optimal dose gives the best response. From this scan, the best outcome achieved is at a dose of 0.7 units, giving 87.1\% survival.} 
+  }
+  {
+    \includegraphics[width=1.0\linewidth]{figures/simsim_dose_curves.png}
+    \label{fig:optimizing_dose}
+  }
+\end{figure}

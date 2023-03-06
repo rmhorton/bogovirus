@@ -1,0 +1,10 @@
+
+We plan to collaborate with medical researchers in our next iteration of this simulation and modeling process to focus on an actual disease and therapies, to reproduce the analytical logic in a more realistic setting. We have experience implementing a similar forward-inference Bayes Network in the Synthea electronic medical record simulator (\cite{synthea})\footnote{\url{https://github.com/rmhorton/virtual-generalist}}; porting our next version to that platform would let us develop shareable feature engineering exercises to conduct the kind of simulation-based analysis described here on data in a realistic schema.
+
+For our next iteration we plan to use Rhino (\cite{gong2022rhino}), the vector auto-regressive extension of DECI, instead of bespoke temporal featurization. Rhino can learn history-dependent noise, and we look forward to exploring circumstances where this leads to better simulation performance
+
+Causal graphs provide an opportunity to capture domain expertise; this is a modeling process that, as we have shown, blends gracefully into simulation modeling. 
+The advantage of adding the causal aspect to the modeling process is that we have an explanation of the model's function in terms comparable to current clinical understanding, and therefore improves credibility and the extensibility of the model's results. We imagine adding a causal modelling step to extend offline simulation for an envisioned causal reinforcement learning model. 
+
+
+%Offline RL is hard because it requires counterfactual queries, that causal reasoning can ``extrapolate'' values for. Remarkably the reconstructive simulations that build upon causal models fare better in parts of the domain where counterfactuals are called upon. We attribute the increased errors to incomplete causal knowledge in the reconstructive simulations compared to the Bayes network model simulation.

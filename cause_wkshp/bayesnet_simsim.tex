@@ -1,0 +1,31 @@
+% \subsection{Using the causal model to re-simulate the data}
+
+Rather than testing a treatment policy in the primary simulation (analogous to an experiment), we can use a causal model to build a simulation (since this is a simulation of a simulation we call this a 'simsim' model, of which we present three versions). We then use this causal simulation to perform the optimization scan. The simsim model is trained on the simulated "observational" dataset where each patient was given a random dose of the drug each day (as opposed to the dose-optimizing simulation where patients were assigned to cohorts that each received the same dose each day). This simulates the process of building a causal model from non-experimental data and using it to estimate an optimal treatment policy without actually running an experiment.
+
+To simulate building a model from observational data, we used the known causal graph from Figure \ref{fig:HBS_sequence} to build a Bayes network whose parameters were learned from the randomized dosage dataset.  
+
+% This uses a different simulated dataset from that used to generate the optimal policy in Figure \ref{fig:optimizing_dose}: For that run---shown by the solid line---a fixed dose was assigned to each patient, as in a randomized controlled trial. We use this to find the dosage policy that gives the best results by which we can compare the Bayes network model simulation, along with the ``SimSim-DECI'' model and the Offline Reinforcement model, as shown in Figure~\ref{fig:optimizing_dose}.
+
+
+\begin{figure}
+  \centering
+  \includegraphics[width=0.95\linewidth]{figures/efficacy_cpt_figure.png}
+  \caption{A portion of the Conditional Probability Table (CPT) for efficacy as a random function of dose and cumulative dose. This CPT is a three-dimensional table where each cell holds a probability, and the coordinates of the cells are the categorical values of the inputs (\texttt{drug} and \texttt{cum\_drug}) and the output (\texttt{efficacy}). Note that the extreme ranges of \texttt{cum\_drug} are not represented in the observational data, and the model assumes a uniform prior. These areas require editing to incorporate domain expertise for extrapolation.}
+  \label{fig:efficacy_cpt_figure}
+\end{figure}
+
+\subsection{Extrapolating to areas not covered by the training data}
+
+% In construction of the Bayes network, multiple high-cardinality inputs to a node lead to a curse of dimensionality problem. In some cases we can apply domain knowledge to break these complicated nodes into a set of smaller, more easily learned nodes.
+
+% The astute reader may notice that the influence diagram in Figure \ref{fig:HBS_sequence} does not contain a node for \texttt{efficacy}; it has four values, \texttt{drug}, \texttt{cum\_drug}, \texttt{infection} and \texttt{severity} flowing directly into \texttt{severity\_next}. Though we were able implement the primary simulation using all four inputs in a single node, having this many inputs into a single node in the Bayes Net led to sparsity problems. If each variable is discretized into N levels, 4 inputs require $N^4$ cells in the CPT. So we once again drew upon our simulated domain knowledge; because \texttt{drug} and \texttt{cum\_drug} interact with each other, but not directly with \texttt{severity} or \texttt{infection}, we were able to add a node to capture this interaction.
+
+Figure \ref{fig:efficacy_cpt_figure} shows the CPT for \texttt{efficacy} for three selected discrete values of \texttt{drug}. We can see that these tables have captured the relationship that the efficacy of a given dose of the drug decreases at higher levels of \texttt{cum\_drug}. However, the very high or very low values of \texttt{cum\_drug} (the extremes of the $x$-axis in each panel) show a uniform probability across the levels of \texttt{efficacy}. This is because these values of \texttt{cum\_drug} are not represented in the random-dose dataset from which this Bayes Net was trained (that would require a consistently high or consistently low dose, which is unlikely in the random-dose dataset), and it defaults to using a uniform prior probability in these ranges. We therefore took advantage of our domain knowledge to modify the CPTs to extrapolate better to extreme values. This was done by simply filling out the uniform-probability columns at the extremes with copies of the closest non-uniform column.
+
+We also simplified the input \texttt{infection}, which is basically a counter that keeps track of how far the patient has progressed through the course of infection, into the binary variable \texttt{infection\_over} that is true if infection reaches 100 or more, and false otherwise. 
+% With these modifications, we feed only three inputs (\texttt{severity}, \texttt{efficacy}, and a binary variable for \texttt{infection\_over}) into \texttt{severity\_next}. 
+This greatly simplifies the probability table for \texttt{severity\_next}.
+
+
+
+
