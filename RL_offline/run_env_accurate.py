@@ -1,4 +1,4 @@
-# harness to run BogoEnv gym environment
+# harness to run BogoEnv gym environment - one patient for one trajectory. 
 # JMA 27 Sept 2022
 import os, re, sys, time
 import datetime as dt
