@@ -1,6 +1,6 @@
 # simulation.py
 # bogovirus simulation, from DB notebook "Bogovirus_simulation"
-# 9 Sept 2022  JMA
+# 6 March 2023  JMA
 
 import os, re, sys
 import math
@@ -137,6 +137,7 @@ def sim_patient(patient_id, policy):
     return patient_pdf
 
 
+# TODO - do this with the env not here. 
 def sim_population(num_patients, policy=standard_of_care_policy):
     'Run a simulation episode '
     patient_list = []
@@ -145,16 +146,16 @@ def sim_population(num_patients, policy=standard_of_care_policy):
     patient_df = pd.concat(patient_list)
     return patient_df
 
-def pickle_df(the_df):
-    'Save the simulation as a dataset.'
-    # Return a datetime string suitable as part of a filename
-    x = str(dt.datetime.now())
-    dt_str = re.sub(r'\..*$', '', x.replace(' ','_').replace(':', '-'))
-    the_df.to_pickle('patient_data'+dt_str+'.pkl')
+# def pickle_df(the_df):
+#     'Save the simulation as a dataset.'
+#     # Return a datetime string suitable as part of a filename
+#     x = str(dt.datetime.now())
+#     dt_str = re.sub(r'\..*$', '', x.replace(' ','_').replace(':', '-'))
+#     the_df.to_pickle('patient_data'+dt_str+'.pkl')
 
 
 if __name__ == '__main__':
-
+    # test running the simulation here
     patient_data = sim_population(NUM_COHORTS * SAMPLES)
 
     num_recovered = np.sum(patient_data.outcome == 'recover')

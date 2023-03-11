@@ -1,0 +1,36 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "beta_simulation",
+            "type": "python",
+            "request": "launch",
+            "program": "beta/beta_simulation.py",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "TimeVarying policy",
+            "type": "python",
+            "request": "launch",
+            "program": "RL_offline/timevarying_policy.py",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "run accurate",
+            "type": "python",
+            "request": "launch",
+            "program": "RL_offline/run_env_accurate.py",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "Python: File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "justMyCode": true
+        }
+    ]
+}

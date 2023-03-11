@@ -3,7 +3,7 @@
 from gym.envs.registration import register
 
 register(
-    id='BogoEnv-Acc-v0',
+    id='BogoEnvBeta-Acc-v0',
     entry_point='envs_beta.bogo_beta:BogoEnv',
     max_episode_steps=300
 )
