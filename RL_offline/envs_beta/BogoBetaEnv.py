@@ -42,6 +42,7 @@ def sigmoid(x):
     # starts at 1, goes to zero
     return 1 - 1/(1 + math.exp(-(x - 0.6)/0.1))
 
+### Simulate environment.  
 class BogoBetaEnv(object):
     'An environment class derived from the gym environment, for one patient episode.'
     
@@ -55,7 +56,7 @@ class BogoBetaEnv(object):
     SAMPLES = 10
 
     def __init__(self) -> None:
-        'Call this once, and reuse it for all episodes'
+        'Call this once, and reuse it for all patient episodes'
         # self.n_neighbors = N_NEIGHBORS 
         # self.render_mode = None
         # fix the type warnings for these
@@ -81,15 +82,17 @@ class BogoBetaEnv(object):
         if space is not None:
             is_not = space.not_within(v)
             if is_not:
-                print(f'Error {the_var}:{round(v,3)} is {is_not}')
+                print(f'Out-of-range {the_var}:{round(v,3)} is {is_not}')
         return v
         
-    ### Model local models
+    ### local models 
         
-    def new_patient(self, patient_id,):
+    def new_patient(self, patient_id, params= 0.7):
         'Return a dict of a patient with an initial infection and its severity.'
         self.stage = 0               # Not a state variable, but the sim tracks it
         self.patient_results = []
+        # Used by the policy function, e.g. to randomize policy over patients. 
+        self.policy_params = params
         today =  {
                 'patient_id': patient_id,             # None of these variable are part of the state
                 'cohort': patient_id % self.NUM_COHORTS,   # 
@@ -212,7 +215,7 @@ class BogoBetaEnv(object):
         'A convenience function to format the observable output '
         return {"Severity":self.today['severity']}
     
-### Use this policy for test
+### Policies #############################################
 def test_const_policy(yesterday, today):  # default policy
     dose = CONST_DOSE
     return dose
@@ -234,11 +237,10 @@ def test_patient_run(env):
         if terminated:
             break
 
+### MAIN ##################################################
 if __name__ == '__main__':
-    
-    # Run one episode 
     bogo_env = BogoBetaEnv()
     test_patient_run(bogo_env)
     episode_df, total_reward = bogo_env.close()
     print(f'DONE! - reward {total_reward}')
-    
+        
