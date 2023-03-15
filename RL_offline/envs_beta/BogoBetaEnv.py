@@ -36,7 +36,7 @@ sys.path.append('./beta/')
 
 SEED = None       # Use a random seed each run
 CONST_DOSE  = 0.7 # For test
-VERBOSE = True
+VERBOSE = False
 
 def sigmoid(x):
     # starts at 1, goes to zero
@@ -48,7 +48,7 @@ class BogoBetaEnv(object):
     
     my_rng = default_rng(seed=None)
 
-    NUM_COHORTS = 1 
+    NUM_COHORTS = 16
     MAX_INFECTION = 150
     MAX_DOSE = 3.0  # we want doses from 0 to 1.5 in 0.1 increments
     SEVERITY_CEILING = 125; # Max expected severity.
@@ -146,7 +146,7 @@ class BogoBetaEnv(object):
         # depends on today's drug and cum_drug
         # The amount by which severity will be reduced. 
         # Maybe this shold be a proportion not a fixed amount? Severity can be negative this way.
-        noise = self.my_rng.normal(loc=0, scale=1, size=1)[0]
+        noise =  self.my_rng.normal(loc=0, scale=0.4, size=1)[0]
         # efficacy = sigmoid( 12 * today['drug'] * today['cum_drug'] + noise )
         efficacy = 12 * today['drug'] * sigmoid( today['cum_drug'] ) + noise
         return efficacy

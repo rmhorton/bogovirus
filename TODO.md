@@ -7,6 +7,14 @@
 
     NOTE: DON'T USE THE OPENAI GYM ENV. CREATE A COMPATIBLE ONE.
 
+Stack overflow - 
+[3:00 PM] Robert Horton
+https://stackoverflow.com/questions/23664877/pandas-equivalent-of-oracle-lead-lag-function
+Pandas equivalent of Oracle Lead/Lag function
+
+    df['Data_lagged'] = df.groupby(['Group'])['Data'].shift(1)
+
+
 2.  Run "sim sims" that learn from the primary sim. (These resemble randomized control trials)
     - duplicate the Bogovirus BN analytical sim.
     - run RHINO's causal discovery alg
