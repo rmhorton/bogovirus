@@ -72,7 +72,7 @@ class BogoBetaEnv(object):
         # Immediate rewards
         self.one_day = -1
         self.recover = 100
-        self.die = -200
+        self.die = -100
         # Since the simulator doesn't observe the full state we keep it internal to the objec
         self.today = ModuleNotFoundError
         

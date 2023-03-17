@@ -8,12 +8,15 @@ from pathlib import Path
 print(Path.cwd())
 sys.path.append('./RL_offline/')
 # from envs_beta.BogoBetaEnv import BogoBetaEnv
-from envs_beta.BogoBetaEnv import * 
+from BogoBetaEnv import * 
 
 class BogoPolicies (BogoBetaEnv):
     
-    def __init__(self) -> None:
+    def __init__(self, params = 0) -> None:
         super().__init__()
+        # Settings that may vary at the patient or other levels,
+        # not a function of state. 
+        self.policy_params = params
         
     def const_policy(self, yesterday, today):  # default policy
         dose = self.policy_params
@@ -33,6 +36,7 @@ class BogoPolicies (BogoBetaEnv):
 
     def dose_cohort_policy(self, yesterday, today):
         cohort = today['cohort']
+        # print(f'c {cohort}')
         dose = self.MAX_DOSE * cohort / (self.NUM_COHORTS - 1)
         return dose
     
