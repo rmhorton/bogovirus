@@ -27,7 +27,6 @@ class Box(object):
         else:
             return False
         
-        
 
 sys.path.append('./beta/')
 # Get the set of policies
@@ -101,7 +100,7 @@ class BogoBetaEnv(object):
                 'infection': self.my_rng.integers(low=20, high=40, size=1)[0],
                 'severity': self.my_rng.integers(low=10, high=30, size=1)[0],
                 'cum_drug' : 0,
-                'outcome':None,
+                'outcome':0,
                 'efficacy': 0,
                 'drug': 0,
                 'reward' : 0
@@ -130,17 +129,18 @@ class BogoBetaEnv(object):
         r = proportion + noise  # # larger value responds more slowly to changes in dose
         return self.test_v('cum_drug',yesterday['cum_drug'] * r + today['drug'] * (1 - r))
     
-    def get_outcome(self, today):
+    def get_outcome(self, today) -> int:
+        # Note: use -1, 0 , 1 as integer outcomes for "die", "stay", "recover"
         # depends on today's severity, infection, and cum_drug
         # possible outcomes: die, recover, none
         noise = self.my_rng.normal(loc=0, scale=0.1, size=1)[0]
         mortality_threshold = 1.0 + noise # my_rng.uniform(low=0.9, high=1.1)
         if (today['severity']/self.SEVERITY_CEILING > mortality_threshold):
-            return 'die'
+            return -1   #'die'
         elif today['infection'] >= 100:
-            return 'recover'
+            return 1  # 'recover'
         else:
-            return None
+            return 0 # None
     
     def get_efficacy(self, today):
         # depends on today's drug and cum_drug
@@ -153,9 +153,9 @@ class BogoBetaEnv(object):
     
     def reward(self, today):
         'reward shaping for the outcome.'
-        if today['outcome'] == 'die':
+        if today['outcome'] == -1:  #'die':
             return self.die
-        elif today['outcome'] == 'recover':
+        elif today['outcome'] == 1:  #'recover':
             return self.recover
         else:
             return self.one_day
@@ -201,7 +201,7 @@ class BogoBetaEnv(object):
         info = {"stage": self.stage}
         # Return only those things the RL solver can see. 
         self.patient_results.append(today)
-        return self.get_observation(), today['reward'],  (today['outcome'] is not None) , info
+        return self.get_observation(), today['reward'],  (today['outcome'] != 0) , info
     
     def close(self):
         'Anything to finish up an episode'
