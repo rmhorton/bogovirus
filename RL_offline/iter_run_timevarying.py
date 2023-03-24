@@ -1,16 +1,15 @@
-# harness to run BogoEnv gym environment
-# JMA 27 Sept 2022
-import os, re, sys
+# harness to run BogoBetaEnv
+# with the time-varying policy
+# JMA 22 March 2023
 import time
 import pandas as pd
 import numpy as np
 from pathlib import Path
-import gym
 from joblib import Parallel, delayed
 
 sys.path.append(str(Path(__file__).parent))
-import envs_accurate
-import mlflow
+import envs_beta
+# import mlflow
 
 EPISODE_LEN = 100
 REPS = 100     # Number of episodes to average 
@@ -34,7 +33,7 @@ def one_episode(the_dose, the_env):
         if terminated or truncated: 
             last_episode = i
             observation.update({'Reward': reward, 'Stage': last_episode})
-            mlflow.log_metrics(observation)
+            # mlflow.log_metrics(observation)
             observation, info = the_env.reset()
             break
     #  Return the state and action for each stage in the episode.
@@ -74,11 +73,11 @@ gym_major_version = re.findall(r'\.\d+\.', gym.__version__)[0].strip('.')
 if int(gym_major_version) < 26:
     print(f'WARNING: gym version {gym_major_version} should be at least 26.')
     
-mlflow.set_experiment("BogoEnv-iterAcc_"+unique_dt)
+# mlflow.set_experiment("BogoEnv-iterAcc_"+unique_dt)
 
-mlflow_run = mlflow.start_run()
+# mlflow_run = mlflow.start_run()
 
-mlflow.log_param('Reps', REPS)
+# mlflow.log_param('Reps', REPS)
 start_time = time.time()
 output_dir = 'output'+unique_dt
 print(f'Creating folder {output_dir}')
@@ -100,5 +99,5 @@ rs = {k: dfrs[k] for k in tk}
 # mlflow.log_metrics(rs)
 dose_response_fn = f'run_stats_{unique_dt}.csv'
 df_run_stats.to_csv(dose_response_fn)
-mlflow.log_artifact(dose_response_fn)
-mlflow.end_run()
+# mlflow.log_artifact(dose_response_fn)
+# mlflow.end_run()
