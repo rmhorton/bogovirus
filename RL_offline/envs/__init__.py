@@ -4,6 +4,6 @@ from gym.envs.registration import register
 
 register(
     id='BogoEnv-v0',
-    entry_point='envs.bogo_world:BogoEnv',
+    entry_point='envs.BogoOfflineEnv:BogoEnv',
     max_episode_steps=300
 )

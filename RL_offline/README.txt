@@ -13,7 +13,7 @@ transition.py                  - Compute a discrete  probability transition matr
 
 envs/                          - OpenGym module for the offline simulation environment
     __init__.py                - module file
-    bogo_world.py              - BogoEnv Class
+    BogoOfflineEnv.py              - BogoEnv Class
 
 envs_accurate/                 - OpenGym module wrapping the simulation code
      __init__.py

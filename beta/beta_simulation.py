@@ -1,5 +1,6 @@
 # simulation.py
 # bogovirus simulation, from DB notebook "Bogovirus_simulation"
+# Note this file is not used since this code has ben incorporated in the module benvs/online. 
 # 6 March 2023  JMA
 
 import os, re, sys
@@ -10,6 +11,9 @@ from numpy.random import default_rng
 import datetime as dt
 # import matplotlib.pyplot as plt
 # import seaborn as sn
+
+sys.path.append('beta\benvs')
+from policies import BogoPolicies
 
 my_rng = default_rng(seed=None)
 

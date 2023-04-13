@@ -1,16 +1,16 @@
-# beta_policies.py
+# BogoPolicies.py
 #
 # 13 March 2023
 
 import os, re, sys
 import math
 from pathlib import Path
-print(Path.cwd())
-sys.path.append('./RL_offline/')
+# print(Path.cwd())
+# sys.path.append('./RL_offline/')
 # from envs_beta.BogoBetaEnv import BogoBetaEnv
-from BogoBetaEnv import * 
+# from BogoBetaEnv import * 
 
-class BogoPolicies (BogoBetaEnv):
+class BogoPolicies: # (BogoBetaEnv):
     
     def __init__(self, params = 0) -> None:
         super().__init__()
@@ -37,8 +37,9 @@ class BogoPolicies (BogoBetaEnv):
     def dose_cohort_policy(self, yesterday, today):
         cohort = today['cohort']
         # print(f'c {cohort}')
-        dose = self.MAX_DOSE * cohort / (self.NUM_COHORTS - 1)
+        dose = self.MAX_DOSE * cohort / (self.num_cohorts - 1)
         return dose
     
-x = BogoPolicies()
-x.new_patient(0)
+if __name__ == '__main__':
+    x = BogoPolicies()
+    print('dose:', x.const_policy(None, None))

@@ -135,3 +135,5 @@ meta.yaml
 
 # VSCode
 *.yaml
+
+.databricks
