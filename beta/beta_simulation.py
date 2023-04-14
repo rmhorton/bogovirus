@@ -12,8 +12,6 @@ import datetime as dt
 # import matplotlib.pyplot as plt
 # import seaborn as sn
 
-sys.path.append('beta\benvs')
-from policies import BogoPolicies
 
 my_rng = default_rng(seed=None)
 

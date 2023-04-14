@@ -137,3 +137,7 @@ meta.yaml
 *.yaml
 
 .databricks
+*.csv
+*.Identifier
+*.parquet
+
