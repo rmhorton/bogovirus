@@ -1,4 +1,6 @@
-# gym environment for the bogovirus using the new, true beta simulator 
+# environment for the bogovirus using the new, true beta simulator,
+# in the style of the gym env class. 
+# This replaces the code for "beta_simulation.py"
 #  JMA 6 March 2023
 
 import math, os, re, sys
@@ -6,12 +8,9 @@ import numpy as np
 import pandas as pd
 from numpy.random import default_rng
 import datetime as dt
-sys.path.append('beta/benvs/online')
+sys.path.append('beta/benvs/policies')
 from BogoPolicies import BogoPolicies
-# import gym
-# from gym.spaces import Box, 
-# gym-like objects
-Dict = dict
+
 
 
 class Box(object):
@@ -30,13 +29,8 @@ class Box(object):
         else:
             return False
         
-        
 
-# sys.path.append('./beta/')
-# Get the set of policies
-# import beta_simulation as sm
-
-VERBOSE = False
+VERBOSE = True
 
 def sigmoid(x):
     # starts at 1, goes to zero
@@ -51,10 +45,10 @@ class BogoBetaEnv(object):
     SEVERITY_CEILING = 125; # Max expected severity.
     MAX_DAYS = 100 
 
-    def __init__(self, NUM_COHORTS = 16,
-                SEED = None,       # Set to an int to get reproducible runs.
-                the_policy = BogoPolicies.const_policy 
-                # CONST_DOSE  = 0.7 # For test
+    def __init__(self,
+                 the_policy, # = BogoPolicies.const_policy 
+                 NUM_COHORTS = 16,
+                 SEED = None       # Set to an int to get reproducible runs.
                 ) -> None:
         'Call this once, and reuse it for all patient episodes'
         # num_cohorts: each cohort receives a different treatment
@@ -63,10 +57,10 @@ class BogoBetaEnv(object):
         self.the_policy = the_policy
         # self.const_dose = CONST_DOSE
 
-        self.action_space = Dict(
+        self.action_space = dict(
             {"Dose": Box(low=0.0, high=self.MAX_DOSE, shape=(1,), dtype=np.float32)}
         )
-        self.observation_space = Dict(
+        self.observation_space = dict(
             {"infection": Box(low=0, high=self.MAX_INFECTION, shape=(1,), dtype=np.float32), 
              "severity": Box(low=0, high=self.SEVERITY_CEILING, shape=(1,), dtype=np.float32),
              "cum_drug": Box(low=0, high=self.MAX_DOSE, shape=(1,), dtype=np.float32)}
@@ -75,7 +69,7 @@ class BogoBetaEnv(object):
         self.one_day = -1
         self.recover = 100
         self.die = -100
-        # Since the simulator doesn't observe the full state we keep it internal to the objec
+        # Since the simulator doesn't observe the full state we keep it internal to the object
         self.today = ModuleNotFoundError
         
     def test_v(self, the_var, v):
@@ -164,7 +158,7 @@ class BogoBetaEnv(object):
 
 ### Simulation  Environment functions
 
-    def reset(self, id_serial, sd=SEED, options=None) -> dict:
+    def reset(self, id_serial, options=None) -> dict:
         'Initialize a patient -  episode'
         # Set state variables.
         # THe state is observable, so we use observation as the state. 
@@ -172,7 +166,6 @@ class BogoBetaEnv(object):
         self.stage = 0 
         self.today = self.yesterday = self.new_patient(patient_id=id_serial)
         #  Features for the predictor -- representing the current state. Only those features samples will be searched on. 
-
         info = {'stage': self.stage}   # Just a place to return additional info
                                        # that is not part of the state, e.g. for diagnostics
         return self.get_observation(), info
@@ -192,7 +185,6 @@ class BogoBetaEnv(object):
         today['outcome']   = self.get_outcome(today)
         today['reward']    = self.reward(today)
         return today
-
 
     def step(self, policy):
         'Increment the state at each stage in an episode, and terminate on death or recovery.'
@@ -217,20 +209,16 @@ class BogoBetaEnv(object):
         'A convenience function to format the observable output '
         return {"Severity":self.today['severity']}
     
-### Policies #############################################
-# def test_const_policy(yesterday, today):  # default policy
-#     dose = CONST_DOSE
-#     return dose
 
-### a test run
-def test_patient_run(env):
+### a test run #############################################
+def test_one_patient_run(env):
     'Run one patient episode.'
     # Create a patient with a random Id. 
-    the_patient = BogoBetaEnv.my_rng.integers(low=0, high=100000, size=1)[0]
+    the_patient = env.my_rng.integers(low=0, high=100000, size=1)[0]
     observation, info = env.reset(id_serial= the_patient)
     print('\t', observation)
     for _ in range(BogoBetaEnv.MAX_DAYS):
-        observation, reward, terminated, info = env.step(test_const_policy)
+        observation, reward, terminated, info = env.step(env.the_policy)
         if VERBOSE: 
             print(env.today)
         else:
@@ -239,9 +227,12 @@ def test_patient_run(env):
             break
 
 ### MAIN ##################################################
+# For a test run one patient episode with a constant policy. 
+
 if __name__ == '__main__':
-    bogo_env = BogoBetaEnv()
-    test_patient_run(bogo_env)
+    policies = BogoPolicies(0.7)    # Used to create a constant policy for test 
+    bogo_env = BogoBetaEnv(policies.const_policy)
+    test_one_patient_run(bogo_env)
     episode_df, total_reward = bogo_env.close()
     print(f'DONE! - reward {total_reward}')
         

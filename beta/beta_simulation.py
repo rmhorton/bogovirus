@@ -158,10 +158,12 @@ def sim_population(num_patients, policy=standard_of_care_policy):
 
 if __name__ == '__main__':
     # test running the simulation here
+    # Run one small population 
     patient_data = sim_population(NUM_COHORTS * SAMPLES)
 
     num_recovered = np.sum(patient_data.outcome == 'recover')
     num_died = np.sum(patient_data.outcome == 'die')
+    # And report the survival fraction. 
     print(f"{num_recovered} patients recovered and {num_died} died")
 
     # pickle_df(patient_data)
