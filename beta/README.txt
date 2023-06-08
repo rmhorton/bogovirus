@@ -16,6 +16,10 @@ benvs/
         BogoBetaEnv.py               # beta_simulation - the object for online env
         __init__.py
 
+    benvs/discrete                   # An online version with discretized observable states 
+        BogoDiscreteEnv.py
+        __init__.py
+
     benvs/policies:
         BogoPolicies.py              # Object with different policies used by 
         __init__.py                  # other environments. 
@@ -23,7 +27,7 @@ benvs/
 beta_simulation.py                   # Test the procedural simulation (since converted into the online env)
 cnt_100_patients.csv
 cohort_const.csv
-generate_primary_sim.py
+generate_primary_sim.py              # Run the online RL experiments.
 iter_run_timevarying.py
 model_UDF_example.ipynb
 readme.md

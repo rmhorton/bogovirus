@@ -11,15 +11,17 @@ from pathlib import Path
 # from BogoBetaEnv import * 
 
 class BogoPolicies: # (BogoBetaEnv):
+    'since the policy knows the cohort we can use cohort as  surrogate for grid search over e.g. dose. '
     
     def __init__(self, params = 0) -> None:
         super().__init__()
         # Settings that may vary at the patient or other levels,
         # not a function of state. 
-        self.policy_params = params
+        self.policy_params = params    # Used for other possible customizations. E.G. max 
         
     def const_policy(self, yesterday, today):  # default policy
-        dose = self.policy_params
+        max_dose, max_cohort= self.policy_params    # Use this to scale dose 
+        dose = today['cohort'] * max_dose /  max_cohort
         return dose
 
     def standard_of_care_policy(self, yesterday, today):  # default policy

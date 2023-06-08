@@ -1,5 +1,7 @@
-# environment for the bogovirus using the new, true beta simulator,
+# An online version environment for the bogovirus using the new, true beta simulator,
 # in the style of the gym env class. 
+# with option for discretized observable states 
+# Suitable for rudimentary RL models.
 # This replaces the code for "beta_simulation.py"
 #  JMA 6 March 2023
 
@@ -8,8 +10,6 @@ import numpy as np
 import pandas as pd
 from numpy.random import default_rng
 import datetime as dt
-sys.path.append('beta/benvs/policies')
-from BogoPolicies import BogoPolicies
 
 
 
@@ -39,15 +39,17 @@ def sigmoid(x):
 ### Simulate environment.  
 class BogoBetaEnv(object):
     'An environment class for online simulation in the style of the gym RL environment, for running patient episodes.'
-    
+   
+    STEP_SIZE = 10          # Discretization step size 
     MAX_INFECTION = 150
-    MAX_DOSE = 3.0  # we want doses from 0 to 1.5 in 0.1 increments
-    SEVERITY_CEILING = 125; # Max expected severity.
+    MAX_DOSE = 1.2  # we want doses from 0 to 1.5 in 0.1 increments
+    SEVERITY_CEILING = 120; # Max expected severity.
     MAX_DAYS = 100 
 
     def __init__(self,
-                 the_policy, # = BogoPolicies.const_policy 
+                 the_policy,
                  NUM_COHORTS = 16,
+                discretize = False,
                  SEED = None       # Set to an int to get reproducible runs.
                 ) -> None:
         'Call this once, and reuse it for all patient episodes'
@@ -55,7 +57,7 @@ class BogoBetaEnv(object):
         self.num_cohorts = NUM_COHORTS
         self.my_rng = default_rng(seed=SEED)
         self.the_policy = the_policy
-        # self.const_dose = CONST_DOSE
+        self.discretize = discretize
 
         self.action_space = dict(
             {"Dose": Box(low=0.0, high=self.MAX_DOSE, shape=(1,), dtype=np.float32)}
@@ -81,6 +83,19 @@ class BogoBetaEnv(object):
                 print(f'Out-of-range {the_var}:{round(v,3)} is {is_not}')
         return v
         
+    def multof10(self, v) -> float:  
+        'Discrete states are used for BNs and for Q learning. '
+        if not self.discretize:
+            return v
+        else:
+            if v < 0:
+                x = 0
+            if v >= self.SEVERITY_CEILING:
+                x = self.SEVERITY_CEILING
+            else:
+                x = round(v / self.STEP_SIZE, 0) * self.STEP_SIZE
+            return x
+        
     ### local models 
         
     def new_patient(self, patient_id, params= 0.7):
@@ -88,14 +103,14 @@ class BogoBetaEnv(object):
         self.stage = 0               # Not a state variable, but the sim tracks it
         self.patient_results = []
         # Used by the policy function, e.g. to randomize policy over patients. 
-        self.policy_params = params
+        self.policy_params = params   # TODO remove.
         today =  {
                 'patient_id': patient_id,             # None of these variable are part of the state
                 'cohort': patient_id % self.num_cohorts,   # 
                 'day_number': self.stage,             # The stage
                 # e.g. An array of length 1, of random integers, 20 <= rv < 40
                 'infection': self.my_rng.integers(low=20, high=40, size=1)[0],
-                'severity': self.my_rng.integers(low=10, high=30, size=1)[0],
+                'severity': self.multof10(self.my_rng.integers(low=10, high=30, size=1)[0]),
                 'cum_drug' : 0,
                 'outcome':None,
                 'efficacy': 0,
@@ -178,7 +193,7 @@ class BogoBetaEnv(object):
         } 
         # Note, the order these are called matters.
         today['infection'] = self.get_infection(yesterday)
-        today['severity']  = self.get_severity(yesterday)
+        today['severity']  = self.multof10(self.get_severity(yesterday))
         today['drug']      = self.the_policy(yesterday, today)
         today['cum_drug']  = self.get_cum_drug(yesterday, today)
         today['efficacy']  = self.get_efficacy(today)
@@ -228,8 +243,9 @@ def test_one_patient_run(env):
 
 ### MAIN ##################################################
 # For a test run one patient episode with a constant policy. 
-
 if __name__ == '__main__':
+    sys.path.append('beta/benvs/policies')
+    from BogoPolicies import BogoPolicies
     policies = BogoPolicies(0.7)    # Used to create a constant policy for test 
     bogo_env = BogoBetaEnv(policies.const_policy)
     test_one_patient_run(bogo_env)

@@ -1,21 +1,18 @@
-# harness to run BogoEnv beta gym environment
+# harness to run BogoEnv beta online environment
 # from "runenv.py"
 # JMA 7 March 2023
-import os, re, sys
+import os, re, sys, time
 import argparse
+from datetime import datetime
 from pathlib import Path
 import pandas as pd
 import numpy as np
-import gym
 
-sys.path.append('./RL_offline/')
-import envs_beta
 
-EPISODE_LEN = 22
-# HISTORY_FILE = "../patient_data_random_doseE6.csv"
-CONST_ACTION = 0.9
-NEIGHBORS = 2
-
+sys.path.append('beta/benvs/online')
+from BogoBetaEnv import BogoBetaEnv
+sys.path.append('beta/benvs/policies')
+from BogoPolicies import BogoPolicies
 
 if __name__ == '__main__':
 
@@ -23,19 +20,18 @@ if __name__ == '__main__':
                         prog = sys.argv[0],
                         description = 'What the program does')
 
-    parser.add_argument('simulation file',
+    parser.add_argument('simulation_file',
                         default='output.parquet',
                         help='output file')   # positional argument
-    parser.add_argument('-e', '--episodes',
-                        help = 'episode maximum length',
-                        default = 25,
-                        type=int)            # option that takes a numeric value
+    parser.add_argument('-d', '--discretize',
+                        help = 'Round all observable values to multiples of 10',
+                        action='store_true')            # option that takes a numeric value
     parser.add_argument('-c', '--cohorts',
-                        help = 'cohorts for RCTs',
+                        help = 'number of cohorts (1)',
                         default = 1,
                         type=int)           
     parser.add_argument('-s', '--samples',
-                        help = 'samples, i.e. patients per cohort',
+                        help = 'samples, i.e. patients per cohort (10)',
                         default = 10,
                         type=int)            
     parser.add_argument('-v', '--verbose',
@@ -44,36 +40,65 @@ if __name__ == '__main__':
     args = parser.parse_args()
     # values can be found in a named tuple: args.filename, args.count, args.verbose
 	
+def one_patient_run(env, serial):
+    'Run one patient episode.'
+    # A column for each variable: stage, Drug-action, Infection, CumulativeDrug, Severity, reward 
+    run_trajectory = []
+    # Create a patient episode, and ignore this observation
+    observation, info = env.reset(id_serial= serial)
     
-    # A column for each variable: reward, Drug-action, Infection, CumulativeDrug, Severity, reward 
-    run_trajectory = np.empty((EPISODE_LEN, 5))
-
-    bg_env = gym.make('BogoEnvBeta-Acc-v0', disable_env_checker=True)
-    observation, info = bg_env.reset()
-    # Initialize
-    # a = bg_env.action_space.sample()
-    a = CONST_ACTION
-    k = NEIGHBORS
-
-    last_episode = EPISODE_LEN
-    run_trajectory[0] = [0, a] + list(observation.values())
-
-    for i in range(1, EPISODE_LEN):
-        observation, reward, terminated, truncated, info = bg_env.step([k,a])
-        run_trajectory[i] = [reward, a] + list(observation.values())
-        # a = bg_env.action_space.sample()
-        a = CONST_ACTION
-        if terminated or truncated:
-            observation, info = bg_env.reset()
-            last_episode = i
+    for step in range(BogoBetaEnv.MAX_DAYS):
+        observation, reward, terminated, info = env.step(env.the_policy)
+        if args.verbose: 
+            print(env.today)
+        else:
+            # print(f'i: {info} # obs: {env.get_observation()}, R: {reward}, end? {terminated}' )
+            run_trajectory.append(env.today)
+        if terminated:
             break
+    env.close()
+    return pd.DataFrame(run_trajectory)
 
-    bg_env.close()
+def file_w_ts(fn: str) -> str:
+    ts = datetime.now().strftime('%j-%H-%M')
+    return f'{fn}_{ts}'
 
-    lbls = ['Reward','Dose'] + list(observation.keys())
-    run = pd.DataFrame(run_trajectory, columns=lbls).iloc[0:last_episode+1,:]
+def run_with_policy(the_env: BogoBetaEnv):
     
-    # num_recovered = np.sum(patient_data.outcome == 'recover')
-    # num_died = np.sum(patient_data.outcome == 'die')
-    # print(f"{num_recovered} patients recovered and {num_died} died")
-    # print(len(run))
+    all_trajectories = [] # The results - the last record - in each trajectory 
+    record_cnt = 0        # Data set size
+    idx = 0               # patient Id
+    for a_cohort in range(args.cohorts):
+        # Adjust the policy 
+        the_policy = BogoPolicies((the_env.MAX_DOSE, args.cohorts)).const_policy 
+        the_env.the_policy = the_policy
+        for a_sample in range(args.samples):
+            # 
+            one_trajectory = one_patient_run(the_env, idx)
+            idx +=1
+            run_outcome = one_trajectory.iloc[-1,:].to_dict()
+            record_cnt += run_outcome['day_number']
+            all_trajectories.append(run_outcome)
+            if args.verbose:
+                print(run_outcome)
+            with open(file_w_ts(args.simulation_file)+'.csv', 'ab') as out_fd:
+                if a_cohort == 0 and a_sample == 0:
+                    one_trajectory.to_csv(out_fd, na_rep='survive', header=True, index=False)
+                else:
+                    one_trajectory.to_csv(out_fd, na_rep='survive', header=False, index=False)
+                    
+    all_trajectories = pd.DataFrame(all_trajectories)       
+    with open(file_w_ts('summary_'+args.simulation_file)+'.csv', 'wb') as out_fd:
+            all_trajectories.to_csv(out_fd, index=False)
+            
+    num_recovered = np.sum(all_trajectories.outcome == 'recover')
+    num_died = np.sum(all_trajectories.outcome == 'die')
+    print(f"{num_recovered} patients recovered and {num_died} died. Recovery fraction: {num_recovered / (num_recovered + num_died):.3} ")
+    print(f'{record_cnt} records.')
+    
+### MAIN ################################################################################
+st = time.time()
+
+bogo_env = BogoBetaEnv(None, NUM_COHORTS= args.cohorts, discretize=args.discretize)    # we set the policy later.
+run_with_policy(bogo_env)
+print(f'Done in {time.time() - st:.2} seconds!')
