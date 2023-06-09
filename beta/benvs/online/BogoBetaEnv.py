@@ -72,7 +72,7 @@ class BogoBetaEnv(object):
         self.recover = 100
         self.die = -100
         # Since the simulator doesn't observe the full state we keep it internal to the object
-        self.today = ModuleNotFoundError
+        self.today = {} # keep all state here #TODO initialize w Q matrix. 
         
     def test_v(self, the_var, v):
         'Is the var in range?'
@@ -98,12 +98,11 @@ class BogoBetaEnv(object):
         
     ### local models 
         
-    def new_patient(self, patient_id, params= 0.7):
+    def new_patient(self, patient_id):
         'Return a dict of a patient with an initial infection and its severity.'
         self.stage = 0               # Not a state variable, but the sim tracks it
         self.patient_results = []
         # Used by the policy function, e.g. to randomize policy over patients. 
-        self.policy_params = params   # TODO remove.
         today =  {
                 'patient_id': patient_id,             # None of these variable are part of the state
                 'cohort': patient_id % self.num_cohorts,   # 
@@ -117,8 +116,8 @@ class BogoBetaEnv(object):
                 'drug': 0,
                 'reward' : 0
             }
-        self.today = today
-        return today
+        self.today.update(today)
+        return self.today
         
     def get_infection(self, yesterday):
         # depends on: infection_prev
@@ -179,7 +178,7 @@ class BogoBetaEnv(object):
         # THe state is observable, so we use observation as the state. 
         # Of course for a constant policy observability is moot.
         self.stage = 0 
-        self.today = self.yesterday = self.new_patient(patient_id=id_serial)
+        self.yesterday = self.new_patient(patient_id=id_serial)
         #  Features for the predictor -- representing the current state. Only those features samples will be searched on. 
         info = {'stage': self.stage}   # Just a place to return additional info
                                        # that is not part of the state, e.g. for diagnostics
@@ -191,6 +190,7 @@ class BogoBetaEnv(object):
             'cohort': yesterday['cohort'],
             'day_number': day_number,
         } 
+        # TODO the Q update must occur before the state is updated.
         # Note, the order these are called matters.
         today['infection'] = self.get_infection(yesterday)
         today['severity']  = self.multof10(self.get_severity(yesterday))
@@ -199,7 +199,8 @@ class BogoBetaEnv(object):
         today['efficacy']  = self.get_efficacy(today)
         today['outcome']   = self.get_outcome(today)
         today['reward']    = self.reward(today)
-        return today
+        self.today.update(today)
+        return self.today
 
     def step(self, policy):
         'Increment the state at each stage in an episode, and terminate on death or recovery.'
@@ -246,7 +247,7 @@ def test_one_patient_run(env):
 if __name__ == '__main__':
     sys.path.append('beta/benvs/policies')
     from BogoPolicies import BogoPolicies
-    policies = BogoPolicies(0.7)    # Used to create a constant policy for test 
+    policies = BogoPolicies(max_dose = 0.7, max_cohort= 2)    # Used to create a constant policy for test 
     bogo_env = BogoBetaEnv(policies.const_policy)
     test_one_patient_run(bogo_env)
     episode_df, total_reward = bogo_env.close()

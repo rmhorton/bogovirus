@@ -9,18 +9,45 @@ from pathlib import Path
 # sys.path.append('./RL_offline/')
 # from envs_beta.BogoBetaEnv import BogoBetaEnv
 # from BogoBetaEnv import * 
+VERBOSE = True
 
 class BogoPolicies: # (BogoBetaEnv):
     'since the policy knows the cohort we can use cohort as  surrogate for grid search over e.g. dose. '
     
-    def __init__(self, params = 0) -> None:
+    def __init__(self, **params) -> None:    #TODO use **args instead of params
         super().__init__()
         # Settings that may vary at the patient or other levels,
         # not a function of state. 
-        self.policy_params = params    # Used for other possible customizations. E.G. max 
+        self.policy_params = params    # A dict Used for other possible customizations. E.G. max 
+        
+    def alpha_iterator(self):
+        'Call this each time to generate a descending series'
+        alpha_new = self.policy_params['alpha']  
+        alpha_rate = self.policy_params['rate']
+        alpha_new = alpha_rate * alpha_new
+        return alpha_new
+    
+        
+    def run_epsilon_greedy_policy(self, yesterday, today):
+        'Use the Q matrix to select an action'
+        # Note, the current Q matrix is passed with the yesterday and today states.
+        current_Q = self.today['Q']
+        # maximize the Q value for the current states
+        # This is V(s)
+        max_Q = current_Q.max(axis=1) + today['reward']
+        # Compute the update to the Q matrix
+        update = self.policy_params['alpha'] * \
+            ( max_Q - yesterday['Q'])
+        if VERBOSE:
+            print(f'update: {update}')
+        # Update the Q matrix
+        yesterday['Q'] += update
+        # Update the learning rate.
+        self.policy_params['alpha'] = self.alpha_iterator()
         
     def const_policy(self, yesterday, today):  # default policy
-        max_dose, max_cohort= self.policy_params    # Use this to scale dose 
+        max_dose = self.policy_params['max_dose']    # Use this to scale dose 
+        max_cohort= self.policy_params['max_cohort']
         dose = today['cohort'] * max_dose /  max_cohort
         return dose
 

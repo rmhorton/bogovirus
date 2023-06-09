@@ -1,6 +1,5 @@
-# harness to run BogoEnv beta online environment
-# from "runenv.py"
-# JMA 7 March 2023
+# harness to run Q learning on the beta online environment
+# JMA 8 June 2023
 import os, re, sys, time
 import argparse
 from datetime import datetime
@@ -21,7 +20,9 @@ if __name__ == '__main__':
                         description = 'What the program does')
 
     parser.add_argument('simulation_file',
+                        nargs='?',            # make it optional
                         default='output.parquet',
+                        action = 'store',
                         help='output file')   # positional argument
     parser.add_argument('-d', '--discretize',
                         help = 'Round all observable values to multiples of 10',
@@ -39,7 +40,10 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     # values can be found in a named tuple: args.filename, args.count, args.verbose
-	
+   
+ALPHA = 0.1
+RATE = 0.9
+
 def one_patient_run(env, serial):
     'Run one patient episode.'
     # A column for each variable: stage, Drug-action, Infection, CumulativeDrug, Severity, reward 
@@ -63,6 +67,25 @@ def file_w_ts(fn: str) -> str:
     ts = datetime.now().strftime('%j-%H-%M')
     return f'{fn}_{ts}'
 
+def init_q_matrix(env):
+    'Create a Q matrix'
+    ACTIONS = np.linspace(0, env.MAX_DOSE, 12)
+    OBSERVATIONS = np.linspace(0, env.SEVERITY_CEILING, 13)
+    Q_DEFAULT = 30
+    Q = Q_DEFAULT * np.ones((len(OBSERVATIONS), len(ACTIONS)))
+    Q = pd.DataFrame(Q, index=OBSERVATIONS, columns=ACTIONS)
+    # Q is a 10 x 12 matrix of Q values. 
+    # Q is initialized to 30. 
+    # Q is bounded by 0 and 120. 
+    # Q is indexed by the observation and action value
+    return Q
+
+def init_env(env):
+    'The Q matrix is shared among all patient episodes.'
+
+    env.today = dict(q=init_q_matrix(env))
+    
+
 def run_with_policy(the_env: BogoBetaEnv):
     
     all_trajectories = [] # The results - the last record - in each trajectory 
@@ -70,8 +93,12 @@ def run_with_policy(the_env: BogoBetaEnv):
     idx = 0               # patient Id
     for a_cohort in range(args.cohorts):
         # Adjust the policy 
-        the_policy = BogoPolicies( max_dose=the_env.MAX_DOSE, max_cohort=args.cohorts).const_policy 
+        the_policy = BogoPolicies(max_dose=the_env.MAX_DOSE, 
+                                  max_cohort=args.cohorts, 
+                                  alpha=ALPHA, 
+                                  rate=RATE).run_epsilon_greedy_policy 
         the_env.the_policy = the_policy
+        init_env(the_env)
         for a_sample in range(args.samples):
             # 
             one_trajectory = one_patient_run(the_env, idx)
