@@ -3,8 +3,9 @@
 # 13 March 2023
 
 import os, re, sys
-import math
+import math, random
 from pathlib import Path
+import pandas as pd
 # print(Path.cwd())
 # sys.path.append('./RL_offline/')
 # from envs_beta.BogoBetaEnv import BogoBetaEnv
@@ -19,31 +20,45 @@ class BogoPolicies: # (BogoBetaEnv):
         # Settings that may vary at the patient or other levels,
         # not a function of state. 
         self.policy_params = params    # A dict Used for other possible customizations. E.G. max 
+        self.alpha_new = params['alpha']  
+        self.alpha_rate = params['rate']
+        self.epsilon = params['epsilon']
         
     def alpha_iterator(self):
         'Call this each time to generate a descending series'
-        alpha_new = self.policy_params['alpha']  
-        alpha_rate = self.policy_params['rate']
-        alpha_new = alpha_rate * alpha_new
-        return alpha_new
+
+        self.alpha_new = self.alpha_rate * self.alpha_new
+        return self.alpha_new
     
+    def choose_epsilon_greedy(self, Q, old_state):
+        ''
+        #Choose the best "old" action 
+        a_star = old_state.index[old_state.argmax()]
+        # Randomize the choice of action TODO
+        a_random_action = random.choice(old_state.index)
+        if random.random() < self.epsilon:
+            a_star = a_random_action
+        return a_star
         
     def run_epsilon_greedy_policy(self, yesterday, today):
         'Use the Q matrix to select an action'
-        # Note, the current Q matrix is passed with the yesterday and today states.
-        current_Q = self.today['Q']
+        # Note, the Q matrix is passed in with the yesterday states.
+        current_Q = yesterday['Q']
         # maximize the Q value for the current states
-        # This is V(s)
-        max_Q = current_Q.max(axis=1) + today['reward']
+        old_state = current_Q.loc[yesterday['severity'],:]
+        new_state = current_Q.loc[today['severity'],:]
+        max_Q = max(new_state)+ today['reward']
         # Compute the update to the Q matrix
+        a_star = self.choose_epsilon_greedy(current_Q, old_state)
         update = self.policy_params['alpha'] * \
-            ( max_Q - yesterday['Q'])
+            ( max_Q - old_state[a_star] )
         if VERBOSE:
             print(f'update: {update}')
         # Update the Q matrix
-        yesterday['Q'] += update
-        # Update the learning rate.
-        self.policy_params['alpha'] = self.alpha_iterator()
+        current_Q.loc[yesterday['severity'], a_star] += update
+        today['Q']= current_Q
+        self.alpha_iterator
+        return a_star
         
     def const_policy(self, yesterday, today):  # default policy
         max_dose = self.policy_params['max_dose']    # Use this to scale dose 
@@ -70,5 +85,6 @@ class BogoPolicies: # (BogoBetaEnv):
         return dose
     
 if __name__ == '__main__':
-    x = BogoPolicies()
-    print('dose:', x.const_policy(None, None))
+    x = BogoPolicies(alpha=0.5, rate=0.9, max_dose=10, max_cohort=10)
+    today = {'cohort':0}
+    print('dose:', x.const_policy(None, today))

@@ -23,11 +23,11 @@ class Box(object):
     def not_within(self, v):
         'test if the value v is outside the interval'
         if v > self.high:
-            return 'high'
+            return ('high', self.high)
         elif v < self.low:
-            return 'low'
+            return ('low', self.low)
         else:
-            return False
+            return (False, v)
         
 
 VERBOSE = True
@@ -72,15 +72,16 @@ class BogoBetaEnv(object):
         self.recover = 100
         self.die = -100
         # Since the simulator doesn't observe the full state we keep it internal to the object
-        self.today = {} # keep all state here #TODO initialize w Q matrix. 
+        # self.today = {} # keep all state here #TODO initialize w Q matrix. 
         
     def test_v(self, the_var, v):
         'Is the var in range?'
         space = self.observation_space.get(the_var, None)
         if space is not None:
-            is_not = space.not_within(v)
-            if is_not:
+            is_not, new_v = space.not_within(v)
+            if is_not: #TODO - outof range severity should => die
                 print(f'Out-of-range {the_var}:{round(v,3)} is {is_not}')
+                v = new_v
         return v
         
     def multof10(self, v) -> float:  
@@ -116,12 +117,11 @@ class BogoBetaEnv(object):
                 'drug': 0,
                 'reward' : 0
             }
-        self.today.update(today)
-        return self.today
+        return today
         
     def get_infection(self, yesterday):
         # depends on: infection_prev
-        progression = self.my_rng.integers(low=0, high=10, size=1)[0]
+        progression = self.my_rng.integers(low=1, high=10, size=1)[0]
         return self.test_v('infection', yesterday['infection'] + progression)
     
     def get_severity(self, yesterday):
@@ -182,35 +182,44 @@ class BogoBetaEnv(object):
         #  Features for the predictor -- representing the current state. Only those features samples will be searched on. 
         info = {'stage': self.stage}   # Just a place to return additional info
                                        # that is not part of the state, e.g. for diagnostics
-        return self.get_observation(), info
+        return {"Severity":self.yesterday['severity']}, info
     
     def cycle(self, yesterday, day_number, policy):
         today = {
             'patient_id': yesterday['patient_id'],
             'cohort': yesterday['cohort'],
             'day_number': day_number,
+            # Make Q available to the policy function
+            'Q': self.yesterday['Q']
         } 
         # TODO the Q update must occur before the state is updated.
         # Note, the order these are called matters.
         today['infection'] = self.get_infection(yesterday)
         today['severity']  = self.multof10(self.get_severity(yesterday))
+        today['outcome']   = self.get_outcome(today)
+        today['reward']    = self.reward(today)
+        # Q is updated by the policy function, and moved to the today dict.
         today['drug']      = self.the_policy(yesterday, today)
         today['cum_drug']  = self.get_cum_drug(yesterday, today)
         today['efficacy']  = self.get_efficacy(today)
-        today['outcome']   = self.get_outcome(today)
-        today['reward']    = self.reward(today)
-        self.today.update(today)
-        return self.today
+        # today[Q] holds the updated Q. 
+        return today
 
-    def step(self, policy):
+    def step(self, Q, policy):
         'Increment the state at each stage in an episode, and terminate on death or recovery.'
         # Call cycle
         self.stage += 1
+        # pass Q in via "yesterday"
+        self.yesterday['Q'] = Q
         today = self.cycle(self.yesterday, self.stage, policy)
-        self.today = self.yesterday = today
-        info = {"stage": self.stage}
+
+        Q = today['Q']
+        info = {"stage": self.stage, "Q": Q}
+        t_copy = today.copy()
+        del t_copy['Q']
         # Return only those things the RL solver can see. 
-        self.patient_results.append(today)
+        self.today = self.yesterday = t_copy
+        self.patient_results.append(t_copy.copy())
         return self.get_observation(), today['reward'],  (today['outcome'] is not None) , info
     
     def close(self):
@@ -247,7 +256,7 @@ def test_one_patient_run(env):
 if __name__ == '__main__':
     sys.path.append('beta/benvs/policies')
     from BogoPolicies import BogoPolicies
-    policies = BogoPolicies(max_dose = 0.7, max_cohort= 2)    # Used to create a constant policy for test 
+    policies = BogoPolicies(max_dose = 0.7, max_cohort= 2, alpha=0, rate=0)    # Used to create a constant policy for test 
     bogo_env = BogoBetaEnv(policies.const_policy)
     test_one_patient_run(bogo_env)
     episode_df, total_reward = bogo_env.close()
