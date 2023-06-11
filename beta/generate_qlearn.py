@@ -43,9 +43,9 @@ if __name__ == '__main__':
     args = parser.parse_args()
     # values can be found in a named tuple: args.filename, args.count, args.verbose
    
-ALPHA = 0.1
-RATE = 0.99
-EPSILON = 0.5
+ALPHA = 0.4
+RATE = 0.999
+EPSILON = 0.1
 
 def file_w_ts(fn: str) -> str:
     ts = datetime.now().strftime('%j-%H-%M')
@@ -100,8 +100,8 @@ def run_with_policy(the_env: BogoBetaEnv):
                                   rate=RATE,
                                   epsilon=EPSILON).run_epsilon_greedy_policy 
         the_env.the_policy = the_policy
-        Q_checkpoint = Q.max().max()
         for a_sample in range(args.samples):
+            Q_checkpoint = Q.sum().sum()
             # Pass Q explicity  
             Q, one_trajectory= one_patient_run(Q, the_env, idx)
             # Update the learning rate.
@@ -112,16 +112,20 @@ def run_with_policy(the_env: BogoBetaEnv):
             all_trajectories.append(run_outcome)
             if args.verbose:
                 print(run_outcome)
-            with open(file_w_ts(args.simulation_file)+'.csv', 'ab') as out_fd:
+            with open(file_w_ts(args.simulation_file)+'.parquet', 'ab') as out_fd:
                 if a_cohort == 0 and a_sample == 0:
-                    one_trajectory.to_csv(out_fd, na_rep='survive', header=True, index=False)
+                    one_trajectory.to_parquet(out_fd, index=False)
                 else:
                     one_trajectory.to_csv(out_fd, na_rep='survive', header=False, index=False)
             print(f'Q delta: {Q_checkpoint - Q.sum().sum():.3} Q sum: {Q.sum().sum():.3}') # Q min: {Q.min().min():.3} Q mean: {Q.mean().mean():.3}')
+
     all_trajectories = pd.DataFrame(all_trajectories)       
     with open(file_w_ts('summary_'+args.simulation_file)+'.csv', 'wb') as out_fd:
             all_trajectories.to_csv(out_fd, index=False)
-    print(Q)
+            
+    with open(file_w_ts('Q_'+args.simulation_file)+'.csv', 'wb') as out_fd:
+            Q.to_csv(out_fd)
+            
     num_recovered = np.sum(all_trajectories.outcome == 'recover')
     num_died = np.sum(all_trajectories.outcome == 'die')
     print(f"{num_recovered} patients recovered and {num_died} died. Recovery fraction: {num_recovered / (num_recovered + num_died):.3} ")

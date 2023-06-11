@@ -10,7 +10,7 @@ import pandas as pd
 # sys.path.append('./RL_offline/')
 # from envs_beta.BogoBetaEnv import BogoBetaEnv
 # from BogoBetaEnv import * 
-VERBOSE = True
+VERBOSE = False
 
 class BogoPolicies: # (BogoBetaEnv):
     'since the policy knows the cohort we can use cohort as  surrogate for grid search over e.g. dose. '
@@ -50,14 +50,14 @@ class BogoPolicies: # (BogoBetaEnv):
         max_Q = max(new_state)+ today['reward']
         # Compute the update to the Q matrix
         a_star = self.choose_epsilon_greedy(current_Q, old_state)
-        update = self.policy_params['alpha'] * \
+        update = self.alpha_new * \
             ( max_Q - old_state[a_star] )
         if VERBOSE:
-            print(f'update: {update}')
+            print(f'update: {update:.3g}, {self.alpha_new:.3g}')
         # Update the Q matrix
         current_Q.loc[yesterday['severity'], a_star] += update
         today['Q']= current_Q
-        self.alpha_iterator
+        self.alpha_iterator()
         return a_star
         
     def const_policy(self, yesterday, today):  # default policy
