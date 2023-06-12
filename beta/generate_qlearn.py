@@ -19,23 +19,33 @@ if __name__ == '__main__':
                         prog = sys.argv[0],
                         description = 'What the program does')
 
-    parser.add_argument('simulation_file',
+    parser.add_argument('simulation_dir',
                         nargs='?',            # make it optional
-                        default='output.parquet',
+                        default='stage',
                         action = 'store',
-                        help='output file')   # positional argument
-    parser.add_argument('-d', '--discretize',
-                        help = 'Round all observable values to multiples of 10',
-                        default = True,
+                        help='output directory')        # positional argument
+    parser.add_argument('-d', '--discretize',           # TODO parameterize the discretization
                         action='store_true')            # option that takes a numeric value
-    parser.add_argument('-c', '--cohorts',
+    parser.add_argument('-c', '--cohorts',              # Also used to pace periodic learning steps
                         help = 'number of cohorts (1)',
                         default = 100,
                         type=int)           
-    parser.add_argument('-s', '--samples',
+    parser.add_argument('-s', '--samples',              # If Q converges before this limit is met, all samples will not be run
                         help = 'samples, i.e. patients per cohort (10)',
                         default = 10,
-                        type=int)            
+                        type=int)  
+    parser.add_argument('-a', '--alpha',
+                        help = 'learning rate (0.10)',
+                        default = 0.10,
+                        type=float)            
+    parser.add_argument('-r', '--decay',
+                        help = 'alpha decay per cohort iteration (0.99)',
+                        default = 0.99,
+                        type=float)            
+    parser.add_argument('-e', '--epsilon',
+                        help = 'greedy exploration probability (0.2)',
+                        default = 0.2,
+                        type=float)                      
     parser.add_argument('-v', '--verbose',
                         default = False,
                         action='store_true')  # on/off flag
@@ -43,13 +53,14 @@ if __name__ == '__main__':
     args = parser.parse_args()
     # values can be found in a named tuple: args.filename, args.count, args.verbose
    
-ALPHA = 0.4
-RATE = 0.999
-EPSILON = 0.1
+# ALPHA = 0.4
+# RATE = 0.999
+# EPSILON = 0.1
+SAMPLE_SAVE = True          # Spend the IO cycles to save every step in episodes
 
-def file_w_ts(fn: str) -> str:
-    ts = datetime.now().strftime('%j-%H-%M')
-    return f'{fn}_{ts}'
+def file_w_ts(dir_n: str, z:str, a:int, d:int, e:int, suffix: str) -> Path:
+    ts = f'{z}{a}_{d}_{e}_' + datetime.now().strftime('%j-%H-%M') + suffix
+    return Path(dir_n) / Path(ts)
 
 def init_q_matrix(env):
     'Create a Q matrix'
@@ -58,10 +69,6 @@ def init_q_matrix(env):
     Q_DEFAULT = 0
     Q = Q_DEFAULT * np.ones((len(OBSERVATIONS), len(ACTIONS)))
     Q = pd.DataFrame(Q, index=OBSERVATIONS, columns=ACTIONS)
-    # Q is a 10 x 12 matrix of Q values. 
-    # Q is initialized to 0. 
-    # Q is bounded by -100 and 100. TODO 
-    # Q is indexed by the observation and action value
     return Q
 
 def one_patient_run(Q, env, serial):
@@ -96,9 +103,9 @@ def run_with_policy(the_env: BogoBetaEnv):
         # Adjust the policy 
         the_policy = BogoPolicies(max_dose=the_env.MAX_DOSE, 
                                   max_cohort=args.cohorts, 
-                                  alpha=ALPHA, 
-                                  rate=RATE,
-                                  epsilon=EPSILON).run_epsilon_greedy_policy 
+                                  alpha=args.alpha, 
+                                  rate=args.decay,
+                                  epsilon=args.epsilon).run_epsilon_greedy_policy 
         the_env.the_policy = the_policy
         for a_sample in range(args.samples):
             Q_checkpoint = Q.sum().sum()
@@ -112,18 +119,27 @@ def run_with_policy(the_env: BogoBetaEnv):
             all_trajectories.append(run_outcome)
             if args.verbose:
                 print(run_outcome)
-            with open(file_w_ts(args.simulation_file)+'.parquet', 'ab') as out_fd:
-                if a_cohort == 0 and a_sample == 0:
-                    one_trajectory.to_parquet(out_fd, index=False)
-                else:
-                    one_trajectory.to_csv(out_fd, na_rep='survive', header=False, index=False)
-            print(f'Q delta: {Q_checkpoint - Q.sum().sum():.3} Q sum: {Q.sum().sum():.3}') # Q min: {Q.min().min():.3} Q mean: {Q.mean().mean():.3}')
+            if SAMPLE_SAVE:
+                with open(file_w_ts(args.simulation_dir, 'S', args.alpha, args.decay, args.epsilon, '.parquet'), 'ab') as out_fd:
+                    if a_cohort == 0 and a_sample == 0:
+                        one_trajectory.to_parquet(out_fd, index=False)
+                    else:
+                        one_trajectory.to_csv(out_fd, na_rep='survive', header=False, index=False)
+            sample_Q_inc = Q_checkpoint - Q.sum().sum()
+            print(f'Q delta: {sample_Q_inc:.3g} Q sum: {Q.sum().sum():.3}')
+            if abs(sample_Q_inc) < 1e-4:
+                break 
+        # Use the for - else magic to break outer loop!
+        else:
+            continue # continue inner loop
+        break        # break the outer loop
+        
 
     all_trajectories = pd.DataFrame(all_trajectories)       
-    with open(file_w_ts('summary_'+args.simulation_file)+'.csv', 'wb') as out_fd:
+    with open(file_w_ts(args.simulation_dir, 'A', args.alpha, args.decay, args.epsilon, '.csv'), 'wb') as out_fd:
             all_trajectories.to_csv(out_fd, index=False)
             
-    with open(file_w_ts('Q_'+args.simulation_file)+'.csv', 'wb') as out_fd:
+    with open(file_w_ts(args.simulation_dir, 'Q', args.alpha, args.decay, args.epsilon, '.csv'), 'wb') as out_fd:
             Q.to_csv(out_fd)
             
     num_recovered = np.sum(all_trajectories.outcome == 'recover')

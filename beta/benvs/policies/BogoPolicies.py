@@ -6,10 +6,7 @@ import os, re, sys
 import math, random
 from pathlib import Path
 import pandas as pd
-# print(Path.cwd())
-# sys.path.append('./RL_offline/')
-# from envs_beta.BogoBetaEnv import BogoBetaEnv
-# from BogoBetaEnv import * 
+
 VERBOSE = False
 
 class BogoPolicies: # (BogoBetaEnv):
@@ -28,7 +25,8 @@ class BogoPolicies: # (BogoBetaEnv):
         'Call this each time to generate a descending series'
 
         self.alpha_new = self.alpha_rate * self.alpha_new
-        return self.alpha_new
+        self.epsilon = self.alpha_rate * self.epsilon
+        return self.alpha_new, self.epsilon
     
     def choose_epsilon_greedy(self, Q, old_state):
         ''

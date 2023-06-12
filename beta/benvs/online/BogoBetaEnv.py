@@ -49,7 +49,7 @@ class BogoBetaEnv(object):
     def __init__(self,
                  the_policy,
                  NUM_COHORTS = 16,
-                discretize = False,
+                 discretize = False,
                  SEED = None       # Set to an int to get reproducible runs.
                 ) -> None:
         'Call this once, and reuse it for all patient episodes'
