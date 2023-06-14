@@ -135,6 +135,7 @@ meta.yaml
 
 # VSCode
 *.yaml
+.vscode/*
 
 .databricks
 *.csv
