@@ -110,7 +110,7 @@ class BogoBetaEnv(object):
                 'day_number': self.stage,             # The stage
                 # e.g. An array of length 1, of random integers, 20 <= rv < 40
                 'infection': self.my_rng.integers(low=20, high=40, size=1)[0],
-                'severity': self.multof10(self.my_rng.integers(low=10, high=30, size=1)[0]),
+                'severity': 10,  # self.multof10(self.my_rng.integers(low=10, high=30, size=1)[0]),
                 'cum_drug' : 0,
                 'outcome':None,
                 'efficacy': 0,
@@ -189,8 +189,8 @@ class BogoBetaEnv(object):
             'patient_id': yesterday['patient_id'],
             'cohort': yesterday['cohort'],
             'day_number': day_number,
-            # Make Q available to the policy function
-            'Q': self.yesterday['Q']
+            # Make QN available to the policy function
+            'QN': self.yesterday['QN']
         } 
         # TODO the Q update must occur before the state is updated.
         # Note, the order these are called matters.
@@ -199,35 +199,40 @@ class BogoBetaEnv(object):
         today['outcome']   = self.get_outcome(today)
         today['reward']    = self.reward(today)
         # Q is updated by the policy function, and moved to the today dict.
-        today['drug']      = self.the_policy(yesterday, today)
+        today['drug']      = self.the_policy(yesterday, today)  # TODO - move last
         today['cum_drug']  = self.get_cum_drug(yesterday, today)
         today['efficacy']  = self.get_efficacy(today)
-        # today[Q] holds the updated Q. 
+        # the_polcy sets today[QN] which holds the updated QN.  
         return today
 
-    def step(self, Q, policy):
+    def step(self, policy, QN=None):
         'Increment the state at each stage in an episode, and terminate on death or recovery.'
         # Call cycle
         self.stage += 1
         # pass Q in via "yesterday"
-        self.yesterday['Q'] = Q
+        self.yesterday['QN'] = QN
         today = self.cycle(self.yesterday, self.stage, policy)
 
-        Q = today['Q']
-        info = {"stage": self.stage, "Q": Q}
+        QN = today['QN']
+        info = {"stage": self.stage, "QN": QN}  # Return QN here
         t_copy = today.copy()
-        del t_copy['Q']
+        del t_copy['QN']
         # Return only those things the RL solver can see. 
-        self.today = self.yesterday = t_copy
+        self.today = self.yesterday = t_copy   
         self.patient_results.append(t_copy.copy())
         return self.get_observation(), today['reward'],  (today['outcome'] is not None) , info
     
-    def close(self):
+    def close(self, QN=None):
         'Anything to finish up an episode'
         # Note - to get the temporal df needed for causal learning join each
         #        row with its previous row.  
         episode = pd.DataFrame(self.patient_results)
         cum_reward = episode.reward.sum()
+        # Get the last stage result to update the survival estimate. 
+        step_reward = cum_reward/ episode.shape[0]
+        if QN:
+            QN.running_survival  = (1-QN.decay) * step_reward  + QN.decay * QN.running_survival
+            print(f'running_survival {QN.running_survival}')
         return episode, cum_reward
 
     def get_observation(self):

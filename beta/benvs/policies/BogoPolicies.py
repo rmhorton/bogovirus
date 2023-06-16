@@ -17,9 +17,9 @@ class BogoPolicies: # (BogoBetaEnv):
         # Settings that may vary at the patient or other levels,
         # not a function of state. 
         self.policy_params = params    # A dict Used for other possible customizations. E.G. max 
-        self.alpha_new = params['alpha']  
-        self.alpha_rate = params['rate']
-        self.epsilon = params['epsilon']
+        self.alpha_new = (params['alpha'] if 'alpha' in params else None)
+        self.alpha_rate = (params['rate'] if 'rate'in params else None)
+        self.epsilon = (params['epsilon'] if 'epsilon' in params else None)
         
     def alpha_iterator(self):
         'Call this each time to generate a descending series'
@@ -41,20 +41,76 @@ class BogoPolicies: # (BogoBetaEnv):
     def run_epsilon_greedy_policy(self, yesterday, today):
         'Use the Q matrix to select an action'
         # Note, the Q matrix is passed in with the yesterday states.
-        current_Q = yesterday['Q']
+        current_Q = yesterday['QN'].Q
+        current_N = yesterday['QN'].N
         # maximize the Q value for the current states
         old_state = current_Q.loc[yesterday['severity'],:]
         new_state = current_Q.loc[today['severity'],:]
         max_Q = max(new_state)+ today['reward']
-        # Compute the update to the Q matrix
+        # Pick a policy
         a_star = self.choose_epsilon_greedy(current_Q, old_state)
+        # Q learning update: compute the update to the Q matrix
         update = self.alpha_new * \
             ( max_Q - old_state[a_star] )
+        # update N, the normalizing factor for Q. 
+        current_N.loc[yesterday['severity'], a_star] += self.alpha_new
         if VERBOSE:
             print(f'update: {update:.3g}, {self.alpha_new:.3g}')
         # Update the Q matrix
         current_Q.loc[yesterday['severity'], a_star] += update
-        today['Q']= current_Q
+        today['QN'].Q= current_Q
+        today['QN'].N= current_N
+        self.alpha_iterator()
+        return a_star
+    
+    def run_epsilon_greedy_on_cum_drug(self, yesterday, today):
+        'Use the Q matrix where cum drug is the observation.'
+        # Note, the Q matrix is passed in with the yesterday states.
+        current_Q = yesterday['QN'].Q
+        current_N = yesterday['QN'].N
+        # maximize the Q value for the current states
+        old_state = current_Q.loc[yesterday['cum_drug'],:]
+        new_state = current_Q.loc[today['cum_drug'],:]
+        max_Q = max(new_state)+ today['reward']
+        # Pick a policy
+        a_star = self.choose_epsilon_greedy(current_Q, old_state)
+        # Q learning update: compute the update to the Q matrix
+        update = self.alpha_new * \
+            ( max_Q - old_state[a_star] )
+        # update N, the normalizing factor for Q. 
+        current_N.loc[yesterday['cum_drug'], a_star] += self.alpha_new
+        if VERBOSE:
+            print(f'update: {update:.3g}, {self.alpha_new:.3g}')
+        # Update the Q matrix
+        current_Q.loc[yesterday['cum_drug'], a_star] += update
+        today['QN'].Q= current_Q
+        today['QN'].N= current_N
+        self.alpha_iterator()
+        return a_star
+    
+    def run_const_greedy_policy(self, yesterday, today):
+        'A test policy that has no observation, so it is const over all states.'
+        # Use the Q matrix to select an action'
+        # Note, the Q matrix is passed in with the yesterday states.
+        current_Q = yesterday['QN'].Q
+        current_N = yesterday['QN'].N
+        # maximize the Q value for the current state
+        old_state = current_Q.loc[0,:]
+        new_state = current_Q.loc[0,:]
+        max_Q = max(new_state)+ today['reward']
+        # Pick a policy
+        a_star = self.choose_epsilon_greedy(current_Q, old_state)
+        # Q learning update: compute the update to the Q matrix
+        update = self.alpha_new * \
+            ( max_Q - old_state[a_star] )
+        # update N, the normalizing factor for Q. 
+        current_N.loc[0, a_star] += self.alpha_new
+        if VERBOSE:
+            print(f'update: {update:.3g}, {self.alpha_new:.3g}')
+        # Update the Q matrix
+        current_Q.loc[0, a_star] += update
+        today['QN'].Q= current_Q
+        today['QN'].N= current_N
         self.alpha_iterator()
         return a_star
         
