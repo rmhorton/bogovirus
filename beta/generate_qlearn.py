@@ -117,13 +117,9 @@ def run_with_policy(the_env: BogoBetaEnv):
     QN = QLearner(the_env, args)   # TODO merge these two parameter objects 
     for a_cohort in range(args.cohorts):
         # Adjust the policy 
-        policies = BogoPolicies(max_dose=the_env.MAX_DOSE,    #TODO pass this as an arg.  
-                                  max_cohort=args.cohorts, 
-                                  alpha=args.alpha, 
-                                  rate=args.decay,
-                                  epsilon=args.epsilon) 
-        the_policy = policies.run_const_greedy_policy  # run_epsilon_greedy_policy
-        the_env.the_policy = the_policy
+
+        the_policy = the_env.policies.run_const_greedy_policy  # run_epsilon_greedy_policy
+        # the_env.the_policy = the_policy
         for a_sample in range(args.samples):
             Q_checkpoint = QN.Q.sum().sum()
             # Pass Q explicity  
@@ -151,7 +147,6 @@ def run_with_policy(the_env: BogoBetaEnv):
             continue # continue inner loop
         break        # break the outer loop
         
-    
     all_trajectories = pd.DataFrame(all_trajectories)       
     with open(file_w_ts(args.simulation_dir, 'A', args.alpha, args.decay, args.epsilon, '.csv'), 'wb') as out_fd:
         all_trajectories.to_csv(out_fd, index=False)
@@ -165,12 +160,17 @@ def run_with_policy(the_env: BogoBetaEnv):
     num_died = np.sum(all_trajectories.outcome == 'die')
     print(f"{num_recovered} patients recovered and {num_died} died. Recovery fraction: {num_recovered / (num_recovered + num_died):.3} ")
     print(f'{record_cnt} records.')
-    return policies
+    return num_recovered, num_died
     
 ### MAIN ################################################################################
 st = time.time()
 
-bogo_env = BogoBetaEnv(None, NUM_COHORTS= args.cohorts, discretize=args.discretize)    # we set the policy later.
-policies = run_with_policy(bogo_env)
+policies = BogoPolicies(# max_dose=the_env.MAX_DOSE,    #TODO pass this as an arg.  
+                            max_cohort=args.cohorts, 
+                            alpha=args.alpha, 
+                            rate=args.decay,
+                            epsilon=args.epsilon) 
+bogo_env = BogoBetaEnv(policies, NUM_COHORTS= args.cohorts, discretize=args.discretize)    # we set the policy later.
+run_with_policy(bogo_env)
 print(f'alpha_final: {policies.alpha_new}, epsilon final: {policies.epsilon}')
 print(f'Done in {time.time() - st:.2} seconds!')

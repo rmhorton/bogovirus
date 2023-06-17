@@ -17,9 +17,16 @@ class BogoPolicies: # (BogoBetaEnv):
         # Settings that may vary at the patient or other levels,
         # not a function of state. 
         self.policy_params = params    # A dict Used for other possible customizations. E.G. max 
+        self.max_dose = params['max_dose']    # Use this to scale dose 
+        self.max_cohort= params['max_cohort']
+        # Q learning params
         self.alpha_new = (params['alpha'] if 'alpha' in params else None)
         self.alpha_rate = (params['rate'] if 'rate'in params else None)
         self.epsilon = (params['epsilon'] if 'epsilon' in params else None)
+        # Customizations for a linear change policy
+        self.mid_day = (params['mid_day'] if 'mid_day' in params else None)
+        self.daily_change = (params['daily_change'] if 'daily_change'in params else None)
+        self.const_dose = (params['const_dose'] if 'const_dose' in params else None)
         
     def alpha_iterator(self):
         'Call this each time to generate a descending series'
@@ -115,27 +122,34 @@ class BogoPolicies: # (BogoBetaEnv):
         return a_star
         
     def const_policy(self, yesterday, today):  # default policy
-        max_dose = self.policy_params['max_dose']    # Use this to scale dose 
-        max_cohort= self.policy_params['max_cohort']
-        dose = today['cohort'] * max_dose /  max_cohort
+        # max_dose = self.policy_params['max_dose']    # Use this to scale dose 
+        # max_cohort= self.policy_params['max_cohort']
+        dose = today['cohort'] * self.max_dose /  self.max_cohort
         return dose
 
     def standard_of_care_policy(self, yesterday, today):  # default policy
         # depends on: today's severity
-        random_dose = self.my_rng.uniform( low=0.0, high=self.MAX_DOSE )
+        random_dose = self.my_rng.uniform( low=0.0, high=self.max_dose )
         severity_dependent_dose = random_dose * today['severity'] / self.SEVERITY_CEILING
         return math.floor(10 * severity_dependent_dose)/10 # rounded down to the nearest tenth
 
     def completely_random_policy(self, yesterday, today):
         # does not depend on anything
-        dose = math.floor(10 * self.my_rng.uniform( low=0.0, high=self.MAX_DOSE ))/10
+        dose = math.floor(10 * self.my_rng.uniform( low=0.0, high=self.max_dose ))/10
+        return dose
+    
+    def linear_change_policy(self, yesterday, today):
+        'vary the dose with the number of days. '
+        dose = min(self.max_dose, 
+                   max(0, 
+                       self.const_dose + self.daily_change * (today['day_number'] - self.mid_day)))
         return dose
 
 
     def dose_cohort_policy(self, yesterday, today):
         cohort = today['cohort']
         # print(f'c {cohort}')
-        dose = self.MAX_DOSE * cohort / (self.num_cohorts - 1)
+        dose = self.max_dose * cohort / (self.num_cohorts - 1)
         return dose
     
 if __name__ == '__main__':

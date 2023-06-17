@@ -47,7 +47,7 @@ class BogoBetaEnv(object):
     MAX_DAYS = 100 
 
     def __init__(self,
-                 the_policy,
+                 the_policy_object,
                  NUM_COHORTS = 16,
                  discretize = False,
                  SEED = None       # Set to an int to get reproducible runs.
@@ -56,7 +56,10 @@ class BogoBetaEnv(object):
         # num_cohorts: each cohort receives a different treatment
         self.num_cohorts = NUM_COHORTS
         self.my_rng = default_rng(seed=SEED)
-        self.the_policy = the_policy
+        self.policies = the_policy_object
+        # The policy object needs to know some env params
+        self.policies.max_dose = self.MAX_DOSE
+        self.policies.max_cohort = NUM_COHORTS
         self.discretize = discretize
 
         self.action_space = dict(
@@ -199,7 +202,8 @@ class BogoBetaEnv(object):
         today['outcome']   = self.get_outcome(today)
         today['reward']    = self.reward(today)
         # Q is updated by the policy function, and moved to the today dict.
-        today['drug']      = self.the_policy(yesterday, today)  # TODO - move last
+        today['drug']      = self.the_policy(yesterday, today)  
+        # cum_drug and efficacy depend on the policy
         today['cum_drug']  = self.get_cum_drug(yesterday, today)
         today['efficacy']  = self.get_efficacy(today)
         # the_polcy sets today[QN] which holds the updated QN.  
@@ -261,8 +265,9 @@ def test_one_patient_run(env):
 if __name__ == '__main__':
     sys.path.append('beta/benvs/policies')
     from BogoPolicies import BogoPolicies
-    policies = BogoPolicies(max_dose = 0.7, max_cohort= 2, alpha=0, rate=0)    # Used to create a constant policy for test 
-    bogo_env = BogoBetaEnv(policies.const_policy)
+    policies = BogoPolicies(max_dose = 0.7, max_cohort= 2, mid_day=6.7, daily_change= 0.5, const_dose=0.4)    # Used to create a constant policy for test 
+    bogo_env = BogoBetaEnv(policies)
+    bogo_env.the_policy = bogo_env.policies.linear_change_policy  # run_epsilon_greedy_policy
     test_one_patient_run(bogo_env)
     episode_df, total_reward = bogo_env.close()
     print(f'DONE! - reward {total_reward}')
