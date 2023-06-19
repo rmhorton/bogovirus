@@ -7,26 +7,28 @@ import math, random
 from pathlib import Path
 import pandas as pd
 
-VERBOSE = False
+params = {'verbose': False}
+
 
 class BogoPolicies: # (BogoBetaEnv):
     'since the policy knows the cohort we can use cohort as  surrogate for grid search over e.g. dose. '
     
+        
     def __init__(self, **params) -> None:    #TODO use **args instead of params
         super().__init__()
         # Settings that may vary at the patient or other levels,
         # not a function of state. 
         self.policy_params = params    # A dict Used for other possible customizations. E.G. max 
-        self.max_dose = params['max_dose']    # Use this to scale dose 
-        self.max_cohort= params['max_cohort']
+        self.max_dose = params.get('max_dose', None)    # Use this to scale dose 
+        self.max_cohort= params.get('max_cohort', None)
         # Q learning params
-        self.alpha_new = (params['alpha'] if 'alpha' in params else None)
-        self.alpha_rate = (params['rate'] if 'rate'in params else None)
-        self.epsilon = (params['epsilon'] if 'epsilon' in params else None)
+        self.alpha_new = params.get('alpha', None) 
+        self.alpha_rate = params.get('rate', None) 
+        self.epsilon = params.get('epsilon', None) 
         # Customizations for a linear change policy
-        self.mid_day = (params['mid_day'] if 'mid_day' in params else None)
-        self.daily_change = (params['daily_change'] if 'daily_change'in params else None)
-        self.const_dose = (params['const_dose'] if 'const_dose' in params else None)
+        self.mid_day = params.get('mid_day', None) 
+        self.daily_change = params.get('daily_change', None)
+        self.const_dose = params.get('const_dose', None)
         
     def alpha_iterator(self):
         'Call this each time to generate a descending series'
@@ -61,7 +63,7 @@ class BogoPolicies: # (BogoBetaEnv):
             ( max_Q - old_state[a_star] )
         # update N, the normalizing factor for Q. 
         current_N.loc[yesterday['severity'], a_star] += self.alpha_new
-        if VERBOSE:
+        if params['verbose']:
             print(f'update: {update:.3g}, {self.alpha_new:.3g}')
         # Update the Q matrix
         current_Q.loc[yesterday['severity'], a_star] += update
@@ -86,7 +88,7 @@ class BogoPolicies: # (BogoBetaEnv):
             ( max_Q - old_state[a_star] )
         # update N, the normalizing factor for Q. 
         current_N.loc[yesterday['cum_drug'], a_star] += self.alpha_new
-        if VERBOSE:
+        if params['verbose']:
             print(f'update: {update:.3g}, {self.alpha_new:.3g}')
         # Update the Q matrix
         current_Q.loc[yesterday['cum_drug'], a_star] += update
@@ -112,7 +114,7 @@ class BogoPolicies: # (BogoBetaEnv):
             ( max_Q - old_state[a_star] )
         # update N, the normalizing factor for Q. 
         current_N.loc[0, a_star] += self.alpha_new
-        if VERBOSE:
+        if params['verbose']:
             print(f'update: {update:.3g}, {self.alpha_new:.3g}')
         # Update the Q matrix
         current_Q.loc[0, a_star] += update
@@ -153,6 +155,7 @@ class BogoPolicies: # (BogoBetaEnv):
         return dose
     
 if __name__ == '__main__':
-    x = BogoPolicies(alpha=0.5, rate=0.9, max_dose=10, max_cohort=10)
-    today = {'cohort':0}
+    params.update({'max_dose': 1.2, 'max_cohort': 2})
+    x = BogoPolicies(**params)
+    today = {'cohort':1}
     print('dose:', x.const_policy(None, today))

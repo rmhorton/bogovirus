@@ -11,6 +11,8 @@ import pandas as pd
 from numpy.random import default_rng
 import datetime as dt
 
+sys.path.append('beta/benvs/policies')
+from BogoPolicies import BogoPolicies
 
 
 class Box(object):
@@ -30,7 +32,13 @@ class Box(object):
             return (False, v)
         
 
-VERBOSE = True
+# params = dict(verbose = True,
+# step_size = 10,          # Discretization step size 
+# max_infection = 150,
+# max_dose = 1.2,          # we want doses from 0 to 1.5 in 0.1 increments
+# severity_ceiling = 100,  # Max expected severity. This nees to be lower than max severity
+# max_days = 100,          # Episode termination if survive or die fails.
+# seed = None)             # Set to an int to get reproducible runs.
 
 def sigmoid(x):
     # starts at 1, goes to zero
@@ -40,35 +48,38 @@ def sigmoid(x):
 class BogoBetaEnv(object):
     'An environment class for online simulation in the style of the gym RL environment, for running patient episodes.'
    
-    STEP_SIZE = 10          # Discretization step size 
-    MAX_INFECTION = 150
-    MAX_DOSE = 1.2  # we want doses from 0 to 1.5 in 0.1 increments
-    SEVERITY_CEILING = 120; # Max expected severity.
-    MAX_DAYS = 100 
-
+    defaults = dict(verbose = True,
+    step_size = 10,          # Discretization step size 
+    max_infection = 150,
+    max_dose = 1.2,          # we want doses from 0 to 1.5 in 0.1 increments
+    severity_ceiling = 120,  # Affects chance of death. 
+    max_days = 100,          # Episode termination if survive or die fails.
+    seed = None)             # Set to an int to get reproducible runs.
+    
     def __init__(self,
-                 the_policy_object,
-                 NUM_COHORTS = 16,
-                 discretize = False,
-                 SEED = None       # Set to an int to get reproducible runs.
+                 **params
                 ) -> None:
         'Call this once, and reuse it for all patient episodes'
         # num_cohorts: each cohort receives a different treatment
-        self.num_cohorts = NUM_COHORTS
-        self.my_rng = default_rng(seed=SEED)
-        self.policies = the_policy_object
-        # The policy object needs to know some env params
-        self.policies.max_dose = self.MAX_DOSE
-        self.policies.max_cohort = NUM_COHORTS
-        self.discretize = discretize
+        self.num_cohorts = 1
+        params.update(self.defaults)
+        self.params = params
+        self.my_rng = default_rng(self.params['seed'])
+        self.policies = BogoPolicies(**params) 
+        # Dont unpack them here - depends on which policies we run 
+        # The policy object needs to know env params
+        # self.policies.max_dose = self.MAX_DOSE
+        # self.policies.max_cohort = NUM_COHORTS
+        # TODO move this ? 
+        self.discretize = self.params['discretize']
 
         self.action_space = dict(
-            {"Dose": Box(low=0.0, high=self.MAX_DOSE, shape=(1,), dtype=np.float32)}
+            {"Dose": Box(low=0.0, high=self.params['max_dose'], shape=(1,), dtype=np.float32)}
         )
         self.observation_space = dict(
-            {"infection": Box(low=0, high=self.MAX_INFECTION, shape=(1,), dtype=np.float32), 
-             "severity": Box(low=0, high=self.SEVERITY_CEILING, shape=(1,), dtype=np.float32),
-             "cum_drug": Box(low=0, high=self.MAX_DOSE, shape=(1,), dtype=np.float32)}
+            {"infection": Box(low=0, high=self.params['max_infection'], shape=(1,), dtype=np.float32), 
+             "severity": Box(low=0, high=self.params['severity_ceiling'], shape=(1,), dtype=np.float32),
+             "cum_drug": Box(low=0, high=self.params['max_dose'], shape=(1,), dtype=np.float32)}
         )
         # Immediate rewards
         self.one_day = -1
@@ -139,7 +150,7 @@ class BogoBetaEnv(object):
     def get_cum_drug(self, yesterday, today, proportion=0.7):
         'Mix the current drug level and the current dose in fixed proportion.'
         # depends on: cum_drug_prev, drug
-        noise = self.my_rng.normal(loc=0, scale=0.01, size=1)[0]  # !!! surprisingly sensitive !!!
+        noise = self.my_rng.normal(loc=0, scale=0.1, size=1)[0]  # !!! surprisingly sensitive !!!
         r = proportion + noise  # # larger value responds more slowly to changes in dose
         return self.test_v('cum_drug',yesterday['cum_drug'] * r + today['drug'] * (1 - r))
     
@@ -148,7 +159,7 @@ class BogoBetaEnv(object):
         # possible outcomes: die, recover, none
         noise = self.my_rng.normal(loc=0, scale=0.1, size=1)[0]
         mortality_threshold = 1.0 + noise # my_rng.uniform(low=0.9, high=1.1)
-        if (today['severity']/self.SEVERITY_CEILING > mortality_threshold):
+        if (today['severity']/self.params['severity_ceiling'] > mortality_threshold):
             return 'die'
         elif today['infection'] >= 100:
             return 'recover'
@@ -251,9 +262,9 @@ def test_one_patient_run(env):
     the_patient = env.my_rng.integers(low=0, high=100000, size=1)[0]
     observation, info = env.reset(id_serial= the_patient)
     print('\t', observation)
-    for _ in range(BogoBetaEnv.MAX_DAYS):
+    for _ in range(env.params['max_days']):
         observation, reward, terminated, info = env.step(env.the_policy)
-        if VERBOSE: 
+        if env.params['verbose'] : 
             print(env.today)
         else:
             print(f'i: {info} # obs: {env.get_observation()}, R: {reward}, end? {terminated}' )
@@ -261,12 +272,17 @@ def test_one_patient_run(env):
             break
 
 ### MAIN ##################################################
-# For a test run one patient episode with a constant policy. 
+# For a test run one patient episode with a policy. 
 if __name__ == '__main__':
-    sys.path.append('beta/benvs/policies')
-    from BogoPolicies import BogoPolicies
-    policies = BogoPolicies(max_dose = 0.7, max_cohort= 2, mid_day=6.7, daily_change= 0.5, const_dose=0.4)    # Used to create a constant policy for test 
-    bogo_env = BogoBetaEnv(policies)
+    params = dict(discretize=False, 
+                       # max_dose = 0.7, 
+                       # max_cohort= 2, 
+                       mid_day=6.7, 
+                       daily_change= 0.01, 
+                       const_dose=0.4)
+
+    # policies = BogoPolicies(**params)    # Used to create a policy for test 
+    bogo_env = BogoBetaEnv(**params)
     bogo_env.the_policy = bogo_env.policies.linear_change_policy  # run_epsilon_greedy_policy
     test_one_patient_run(bogo_env)
     episode_df, total_reward = bogo_env.close()

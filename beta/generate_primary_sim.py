@@ -14,31 +14,7 @@ from BogoBetaEnv import BogoBetaEnv
 sys.path.append('beta/benvs/policies')
 from BogoPolicies import BogoPolicies
 
-if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser(
-                        prog = sys.argv[0],
-                        description = 'What the program does')
-
-    parser.add_argument('simulation_file',
-                        default='output.parquet',
-                        help='output file')   # positional argument
-    parser.add_argument('-d', '--discretize',
-                        help = 'Round all observable values to multiples of 10',
-                        action='store_true')            # option that takes a numeric value
-    parser.add_argument('-c', '--cohorts',
-                        help = 'number of cohorts (1)',
-                        default = 1,
-                        type=int)           
-    parser.add_argument('-s', '--samples',
-                        help = 'samples, i.e. patients per cohort (10)',
-                        default = 10,
-                        type=int)            
-    parser.add_argument('-v', '--verbose',
-                        action='store_true')  # on/off flag
-
-    args = parser.parse_args()
-    # values can be found in a named tuple: args.filename, args.count, args.verbose
 	
 def one_patient_run(env, serial):
     'Run one patient episode.'
@@ -97,8 +73,33 @@ def run_with_policy(the_env: BogoBetaEnv):
     print(f'{record_cnt} records.')
     
 ### MAIN ################################################################################
-st = time.time()
+if __name__ == '__main__':
 
-bogo_env = BogoBetaEnv(None, NUM_COHORTS= args.cohorts, discretize=args.discretize)    # we set the policy later.
-run_with_policy(bogo_env)
-print(f'Done in {time.time() - st:.2} seconds!')
+    parser = argparse.ArgumentParser(
+                        prog = sys.argv[0],
+                        description = 'What the program does')
+
+    parser.add_argument('simulation_file',
+                        default='output.parquet',
+                        help='output file')   # positional argument
+    parser.add_argument('-d', '--discretize',
+                        help = 'Round all observable values to multiples of 10',
+                        action='store_true')            # option that takes a numeric value
+    parser.add_argument('-c', '--cohorts',
+                        help = 'number of cohorts (1)',
+                        default = 1,
+                        type=int)           
+    parser.add_argument('-s', '--samples',
+                        help = 'samples, i.e. patients per cohort (10)',
+                        default = 10,
+                        type=int)            
+    parser.add_argument('-v', '--verbose',
+                        action='store_true')  # on/off flag
+
+    args = parser.parse_args()
+    # values can be found in a named tuple: args.filename, args.count, args.verbose
+    st = time.time()
+
+    bogo_env = BogoBetaEnv(None, NUM_COHORTS= args.cohorts, discretize=args.discretize)    # we set the policy later.
+    run_with_policy(bogo_env)
+    print(f'Done in {time.time() - st:.2} seconds!')

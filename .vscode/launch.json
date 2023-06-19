@@ -2,6 +2,19 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "generate_grid",
+            "type": "python",
+            "request": "launch",
+            "program": "beta/generate_gridsearch.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "stage",
+                "-m 6.0",
+                "-s 100"
+            ]
+        },
+        {
         "name": "qlearn",
         "type": "python",
         "request": "launch",

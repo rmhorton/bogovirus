@@ -8,8 +8,6 @@ import pandas as pd
 import numpy as np
 
 
-sys.path.append('beta/benvs/online')
-from BogoBetaEnv import BogoBetaEnv
 sys.path.append('beta/benvs/policies')
 from BogoPolicies import BogoPolicies
 
@@ -171,6 +169,6 @@ policies = BogoPolicies(# max_dose=the_env.MAX_DOSE,    #TODO pass this as an ar
                             rate=args.decay,
                             epsilon=args.epsilon) 
 bogo_env = BogoBetaEnv(policies, NUM_COHORTS= args.cohorts, discretize=args.discretize)    # we set the policy later.
-run_with_policy(bogo_env)
+policies = run_with_policy(bogo_env)
 print(f'alpha_final: {policies.alpha_new}, epsilon final: {policies.epsilon}')
 print(f'Done in {time.time() - st:.2} seconds!')
