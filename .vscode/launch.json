@@ -2,35 +2,48 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "qlearn",
+            "name": "generate_grid",
             "type": "python",
             "request": "launch",
-            "program": "beta/generate_qlearn.py",
-            "console": "integratedTerminal",
-            "justMyCode": true,
-            "args": [
-                "stage",
-                "-c 1",
-                "-s 10000",
-                "-a 0.2",
-                "-r 0.991",
-                "-e 0.5",
-                "-d"
-            ]
-        },
-        {
-            "name": "generate_primary",
-            "type": "python",
-            "request": "launch",
-            "program": "beta/generate_primary_sim.py",
+            "program": "beta/generate_gridsearch.py",
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": [
-                "x_const",
-                "-c 2",
-                "-s 20"
+                "stage",
+                "-m 6.0",
+                "-s 100"
             ]
         },
+        {
+        "name": "qlearn",
+        "type": "python",
+        "request": "launch",
+        "program": "beta/generate_qlearn.py",
+        "console": "integratedTerminal",
+        "justMyCode": true,
+        "args": [
+            "stage",
+            "-c 1",
+            "-s 6000",
+            "-a 0.4",
+            "-r 0.999",
+            "-e 0.0",
+            "-d"
+        ]
+    },
+    {
+        "name": "generate_primary",
+        "type": "python",
+        "request": "launch",
+        "program": "beta/generate_primary_sim.py",
+        "console": "integratedTerminal",
+        "justMyCode": false,
+        "args": [
+            "x_const",
+            "-c 2",
+            "-s 20"
+        ]
+    },
         {
             "name": "beta_simulation",
             "type": "python",
