@@ -11,6 +11,9 @@ import numpy as np
 sys.path.append('beta/benvs/policies')
 from BogoPolicies import BogoPolicies
 
+sys.path.append('beta/benvs/online')
+from BogoBetaEnv import BogoBetaEnv
+
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(
@@ -54,7 +57,8 @@ if __name__ == '__main__':
 # ALPHA = 0.4
 # RATE = 0.999
 # EPSILON = 0.1
-SAMPLE_SAVE = False          # Spend the IO cycles to save every step in episodes
+SAMPLE_SAVE = False          # Spend the IO cycles to save every step in episode
+CUM_DRUG = True
 
 def file_w_ts(dir_n: str, z:str, a:int, d:int, e:int, suffix: str) -> Path:
     ts = f'{z}{a}_{d}_{e}_' + datetime.now().strftime('%j-%H-%M') + suffix
@@ -72,8 +76,9 @@ class QLearner (object):
 
     def init_q_matrix(self, env):
         'Create a Q matrix and its shadow count matrix'
-        ACTIONS = [round(z,1) for z in np.linspace(0, env.MAX_DOSE, 13)]
-        OBSERVATIONS = [0]   # [round(z,0) for z in np.linspace(0, env.SEVERITY_CEILING, 13)]
+        ACTIONS = [round(z,1) for z in np.linspace(0, env.params['max_dose'], 13)]
+        if CUM_DRUG:
+            OBSERVATIONS =  [round(10*z,0)/10 for z in np.linspace(0, env.params['max_dose'], 13)]
         Q_DEFAULT = 0
         Q = Q_DEFAULT * np.ones((len(OBSERVATIONS), len(ACTIONS)))
         Q = pd.DataFrame(Q, index=OBSERVATIONS, columns=ACTIONS)
@@ -90,8 +95,8 @@ def one_patient_run(QN, env, serial):
     # Create a patient episode, and ignore this observation
     observation, info = env.reset(id_serial= serial)
     
-    for step in range(BogoBetaEnv.MAX_DAYS):
-        observation, reward, terminated, info = env.step(env.the_policy, QN)
+    for step in range(env.params['max_days']):
+        observation, reward, terminated, info = env.step(env.policies, QN)
         QN = info['QN']    # return Q from env.step()
         if args.verbose: 
             print(env.patient_results[-1])
@@ -116,7 +121,7 @@ def run_with_policy(the_env: BogoBetaEnv):
     for a_cohort in range(args.cohorts):
         # Adjust the policy 
 
-        the_policy = the_env.policies.run_const_greedy_policy  # run_epsilon_greedy_policy
+        the_env.the_policy = the_env.policies.run_epsilon_greedy_on_cum_drug #run_const_greedy_policy  # run_epsilon_greedy_policy
         # the_env.the_policy = the_policy
         for a_sample in range(args.samples):
             Q_checkpoint = QN.Q.sum().sum()
@@ -149,7 +154,7 @@ def run_with_policy(the_env: BogoBetaEnv):
     with open(file_w_ts(args.simulation_dir, 'A', args.alpha, args.decay, args.epsilon, '.csv'), 'wb') as out_fd:
         all_trajectories.to_csv(out_fd, index=False)
     #normalizedQ = QN.Q/QN.N
-    Qfilename = file_w_ts(args.simulation_dir, 'Q', args.alpha, args.decay, args.epsilon, '.csv')
+    Qfilename = file_w_ts(args.simulation_dir, 'QC', args.alpha, args.decay, args.epsilon, '.csv')
     with open(Qfilename, 'wb') as out_fd:
         QN.Q.to_csv(out_fd)
     print(f'\nWrote {Qfilename}')
@@ -161,14 +166,19 @@ def run_with_policy(the_env: BogoBetaEnv):
     return num_recovered, num_died
     
 ### MAIN ################################################################################
-st = time.time()
-
-policies = BogoPolicies(# max_dose=the_env.MAX_DOSE,    #TODO pass this as an arg.  
-                            max_cohort=args.cohorts, 
-                            alpha=args.alpha, 
+params = dict( NUM_COHORTS= args.cohorts, discretize=args.discretize, alpha=args.alpha, 
                             rate=args.decay,
-                            epsilon=args.epsilon) 
-bogo_env = BogoBetaEnv(policies, NUM_COHORTS= args.cohorts, discretize=args.discretize)    # we set the policy later.
+                            epsilon=args.epsilon)
+params.update(vars(args)) 
+st = time.time()
+# policies = BogoPolicies(# max_dose=the_env.MAX_DOSE,    #TODO pass this as an arg.  
+#                             max_cohort=args.cohorts, 
+#                             alpha=args.alpha, 
+#                             rate=args.decay,
+#                             epsilon=args.epsilon) 
+bogo_env = BogoBetaEnv(**params) #policies, NUM_COHORTS= args.cohorts, discretize=args.discretize)    # we set the policy later.
+# bogo_env.policies=policies
 policies = run_with_policy(bogo_env)
-print(f'alpha_final: {policies.alpha_new}, epsilon final: {policies.epsilon}')
+if not CUM_DRUG:
+    print(f'alpha_final: {policies.alpha_new}, epsilon final: {policies.epsilon}')
 print(f'Done in {time.time() - st:.2} seconds!')

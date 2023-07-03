@@ -1,6 +1,7 @@
 {
     "version": "0.2.0",
     "configurations": [
+
         {
             "name": "generate_grid",
             "type": "python",
@@ -10,8 +11,8 @@
             "justMyCode": false,
             "args": [
                 "stage",
-                "-m 6.0",
-                "-s 100"
+                "-m 2.67",
+                "-s 200"
             ]
         },
         {
@@ -27,7 +28,7 @@
             "-s 6000",
             "-a 0.4",
             "-r 0.999",
-            "-e 0.0",
+            "-e 0.4",
             "-d"
         ]
     },

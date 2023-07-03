@@ -11,8 +11,6 @@ import numpy as np
 
 sys.path.append('beta/benvs/online')
 from BogoBetaEnv import BogoBetaEnv
-# sys.path.append('beta/benvs/policies')
-# from BogoPolicies import BogoPolicies
 
     
 ###  Functions ###################
@@ -48,13 +46,13 @@ def run_policy_over_grid(the_env: BogoBetaEnv, const_space, change_space):
     idx = 0               # patient Id
     for const_value in const_space:
         for change_value in change_space:
+            const_value = round(const_value,3)
+            change_value = round(change_value,3)
             a_cohort = (const_value, change_value) 
             print(f'\tcohort: {a_cohort}')
-            # Adjust the policy 
-            #the_policy = BogoPolicies(**params).linear_change_policy
             the_env.policies.const_dose = const_value
             the_env.policies.daily_change = change_value
-            the_env.the_policy = the_env.policies.linear_change_policy 
+            the_env.the_policy = the_env.policies.linear_efficacy_policy
             for a_sample in range(the_env.params['samples']):
                 # 
                 one_trajectory = one_patient_run(the_env, idx)
@@ -74,7 +72,7 @@ def run_policy_over_grid(the_env: BogoBetaEnv, const_space, change_space):
                     
     all_trajectories = pd.DataFrame(all_trajectories)
     if the_env.params.get('simulation_dir', None) :       
-        with open(file_w_ts(the_env.params['simulation_dir'], 'T', the_env.params, '.csv'), 'wb') as out_fd:
+        with open(file_w_ts(the_env.params['simulation_dir'], 'SV', the_env.params, '.csv'), 'wb') as out_fd:
             all_trajectories.to_csv(out_fd, index=False)
     #normalizedQ = QN.Q/QN.N
         Qfilename = file_w_ts(the_env.params['simulation_dir'], 'Q', the_env.params, '.csv')
@@ -136,12 +134,15 @@ if __name__ == '__main__':
                         # daily_change= 0.01, 
                         # const_dose=0.4)
     
+    # Modify the existing parameters from values passed in as args. 
     params.update(vars(args)) 
-    # params['SAMPLE_SAVE'] = False          # Spend the IO cycles to save every step in episodes
 
     st = time.time()
     bogo_env = BogoBetaEnv(**params)
-    const_dose = np.linspace(0.6, 0.8, 21)
-    daily_dose_change = np.linspace(-0.2, 0.15, 21)
+    # TODO make these cmd line configurable 
+    # Note -- for severity we broaden the const dose
+    const_dose = np.linspace(0.45, 0.7, 13)
+    # we assume dose should decrease but we'll try others
+    daily_dose_change = np.linspace(-0.07, 0.0, 15)
     run_policy_over_grid(bogo_env, const_dose, daily_dose_change)
     print(f'Done in {time.time() - st:.2} seconds!')

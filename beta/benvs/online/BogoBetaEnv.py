@@ -14,6 +14,8 @@ import datetime as dt
 sys.path.append('beta/benvs/policies')
 from BogoPolicies import BogoPolicies
 
+CUM_DRUG = True
+
 
 class Box(object):
     'To test if a value fits in an interval'
@@ -48,7 +50,7 @@ def sigmoid(x):
 class BogoBetaEnv(object):
     'An environment class for online simulation in the style of the gym RL environment, for running patient episodes.'
    
-    defaults = dict(verbose = True,
+    defaults = dict(verbose = False,
     step_size = 10,          # Discretization step size 
     max_infection = 150,
     max_dose = 1.2,          # we want doses from 0 to 1.5 in 0.1 increments
@@ -105,10 +107,10 @@ class BogoBetaEnv(object):
         else:
             if v < 0:
                 x = 0
-            if v >= self.SEVERITY_CEILING:
-                x = self.SEVERITY_CEILING
+            if v >= self.params['severity_ceiling']:
+                x = self.params['severity_ceiling']
             else:
-                x = round(v / self.STEP_SIZE, 0) * self.STEP_SIZE
+                x = round(v / self.params['step_size'], 0) * self.params['step_size']
             return x
         
     ### local models 
@@ -215,7 +217,10 @@ class BogoBetaEnv(object):
         # Q is updated by the policy function, and moved to the today dict.
         today['drug']      = self.the_policy(yesterday, today)  
         # cum_drug and efficacy depend on the policy
-        today['cum_drug']  = self.get_cum_drug(yesterday, today)
+        if not CUM_DRUG:   # Do this in the policy function 
+            today['cum_drug']  = self.get_cum_drug(yesterday, today)
+        else:
+            today['cum_drug'] = yesterday['cum_drug']
         today['efficacy']  = self.get_efficacy(today)
         # the_polcy sets today[QN] which holds the updated QN.  
         return today
