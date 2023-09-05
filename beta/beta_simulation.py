@@ -8,7 +8,8 @@ import math
 import pandas as pd
 import numpy as np
 from numpy.random import default_rng
-import datetime as dt
+# import datetime as dt
+from datetime import datetime
 # import matplotlib.pyplot as plt
 # import seaborn as sn
 
@@ -57,7 +58,7 @@ def get_infection(yesterday):
 
 def get_severity(yesterday):
     # depends on: yesterday's severity, infection, & efficacy
-    noise = my_rng.normal(loc=0, scale=1, size=1)
+    noise = my_rng.normal(loc=0, scale=1, size=1)[0]
     severity_next = yesterday['severity'] * 1.1 + \
                     yesterday['infection'] * 0.1 - \
                     yesterday['efficacy'] + \
@@ -67,7 +68,7 @@ def get_severity(yesterday):
 def get_cum_drug(yesterday, today, proportion=0.7):
     'Mix the current drug level and the current dose in fixed proportion.'
     # depends on: cum_drug_prev, drug
-    noise = my_rng.normal(loc=0, scale=0.01, size=1)  # !!! surprisingly sensitive !!!
+    noise = my_rng.normal(loc=0, scale=0.01, size=1)[0]  # !!! surprisingly sensitive !!!
     r = proportion + noise  # # larger value responds more slowly to changes in dose
     return yesterday['cum_drug'] * r + today['drug'] * (1 - r)
 
@@ -81,8 +82,8 @@ def standard_of_care_policy(yesterday, today):  # default policy
 def get_efficacy(today):
     # depends on today's drug and cum_drug
     # The amount by which severity will be reduced. 
-    # Maybe this shold be a proportion not a fixed amount? Severity can be negative this way.
-    noise = my_rng.normal(loc=0, scale=1, size=1)
+    # Maybe this should be a proportion not a fixed amount? Severity can be negative this way.
+    noise = my_rng.normal(loc=0, scale=1, size=1)[0]
     sigmoid = lambda x: 1 - 1/(1 + math.exp(-(x - 0.6)/0.1))  # starts at 1, goes to zero
     efficacy = 12 * today['drug'] * sigmoid( today['cum_drug'] ) + noise
     return efficacy
@@ -164,6 +165,8 @@ if __name__ == '__main__':
     num_recovered = np.sum(patient_data.outcome == 'recover')
     num_died = np.sum(patient_data.outcome == 'die')
     # And report the survival fraction. 
+    fn = f'Simulation {SAMPLES}_' + datetime.now().strftime('%j-%H-%M') + '.csv'
+    patient_data.to_csv(fn)
     print(f"{num_recovered} patients recovered and {num_died} died")
 
     # pickle_df(patient_data)

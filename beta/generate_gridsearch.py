@@ -17,6 +17,7 @@ from BogoBetaEnv import BogoBetaEnv
 def file_w_ts(dir_n: str, z:str, params:dict, suffix: str) -> Path:
     vars = '_'.join([f'{x}-{y}' for x, y in params.items() if type(y) is int])
     ts = f'{z}{vars}_' + datetime.now().strftime('%j-%H-%M') + suffix
+    print('Writing to file: ', ts)
     return Path(dir_n) / Path(ts)
     
 def one_patient_run(env, serial):
@@ -64,6 +65,8 @@ def run_policy_over_grid(the_env: BogoBetaEnv, const_space, change_space):
                 if the_env.params['verbose']:
                     print(run_outcome)
                 if the_env.params['SAMPLE_SAVE']:
+                    if not Path.exists(the_env.params['simulation_dir']):
+                        os.makedirs(the_env.params['simulation_dir'])
                     with open(file_w_ts(the_env.params['simulation_dir']),'T', params, '.csv', 'ab') as out_fd:
                         if idx == 1:
                             one_trajectory.to_csv(out_fd, na_rep='survive', header=True, index=False)
@@ -71,7 +74,10 @@ def run_policy_over_grid(the_env: BogoBetaEnv, const_space, change_space):
                             one_trajectory.to_csv(out_fd, na_rep='survive', header=False, index=False)
                     
     all_trajectories = pd.DataFrame(all_trajectories)
-    if the_env.params.get('simulation_dir', None) :       
+    # Print a summary file if a directory is given. 
+    if the_env.params.get('simulation_dir', None) :  
+        if not Path(the_env.params['simulation_dir']).is_dir():
+            os.makedirs(the_env.params['simulation_dir'])
         with open(file_w_ts(the_env.params['simulation_dir'], 'SV', the_env.params, '.csv'), 'wb') as out_fd:
             all_trajectories.to_csv(out_fd, index=False)
     #normalizedQ = QN.Q/QN.N
@@ -145,4 +151,4 @@ if __name__ == '__main__':
     # we assume dose should decrease but we'll try others
     daily_dose_change = np.linspace(-0.07, 0.0, 15)
     run_policy_over_grid(bogo_env, const_dose, daily_dose_change)
-    print(f'Done in {time.time() - st:.2} seconds!')
+    print(f'Done in {time.time() - st:.2f} seconds!')

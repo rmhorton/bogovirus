@@ -11,8 +11,8 @@ import numpy as np
 
 sys.path.append('beta/benvs/online')
 from BogoBetaEnv import BogoBetaEnv
-sys.path.append('beta/benvs/policies')
-from BogoPolicies import BogoPolicies
+# sys.path.append('beta/benvs/policies')
+# from BogoPolicies import BogoPolicies
 
 
 	
@@ -37,6 +37,7 @@ def one_patient_run(env, serial):
 
 def file_w_ts(fn: str) -> str:
     ts = datetime.now().strftime('%j-%H-%M')
+    print(f'Writing to file: {fn}_{ts}' )
     return f'{fn}_{ts}'
 
 def run_with_policy(the_env: BogoBetaEnv):
@@ -98,8 +99,11 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     # values can be found in a named tuple: args.filename, args.count, args.verbose
+    params = dict(discretize=False,
+                SAMPLE_SAVE=False, 
+                        samples=2)
+    params.update(vars(args)) 
     st = time.time()
-
-    bogo_env = BogoBetaEnv(None, NUM_COHORTS= args.cohorts, discretize=args.discretize)    # we set the policy later.
+    bogo_env = BogoBetaEnv(**params) # None, NUM_COHORTS= args.cohorts, discretize=args.discretize)    # we set the policy later.
     run_with_policy(bogo_env)
     print(f'Done in {time.time() - st:.2} seconds!')
